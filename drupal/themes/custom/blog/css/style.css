@@ -7,11 +7,11 @@ body {
   letter-spacing: 0.03em; }
 
 /* Links */
-a:link, a:visited {
+#page a:link,  #page a:visited {
   color: blue;
   text-decoration: none; }
 
-a:hover, a:active {
+#page a:hover, #page a:active {
   color: red;
   text-decoration: underline; }
 
@@ -23,34 +23,34 @@ a:hover, a:active {
   padding: 0 0 0.5em;
   margin: 0; }
 
-h1, h2, h3, h4, h5, h6 {
+#page h1, #page h2, #page h3, #page h4, #page h5, #page h6 {
   line-height: 1.3em; }
 
-h1 {
+#page h1 {
   font-size: 2.2em;
   font-weight: 300;
   padding: 0 0 0.5em;
   margin: 0; }
 
-h2 {
+#page h2 {
   font-size: 1.8em;
   font-weight: 300;
   margin-bottom: 0.75em; }
 
-h3 {
+#page h3 {
   font-size: 1.4em;
   margin-bottom: 1em; }
 
-h4 {
+#page h4 {
   font-size: 1.2em;
   margin-bottom: 0.8em; }
 
-h5 {
+#page h5 {
   font-size: 1.1em;
   font-weight: 600;
   margin-bottom: 0; }
 
-h6 {
+#page h6 {
   font-size: 1em;
   font-weight: bold; }
 
