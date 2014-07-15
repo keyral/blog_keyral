@@ -272,7 +272,7 @@ $config_directories = array();
  *   $settings['hash_salt'] = file_get_contents('/home/example/salt.txt');
  * @endcode
  */
-$settings['hash_salt'] = '03LvLBO_q7GxCLnstjVpSRlukP_sBvGS_svdpT6cN7nHFOqmdIibee6Gmda296mU6OwNQErZ-Q';
+$settings['hash_salt'] = 'NJlllYZz1hAyAahDilLz4L5ShMzREl1ab3e6ownIh5g2hQPmWOXN5N1zkCYJzrBluV7GWNS-bQ';
 
 /**
  * Access control for update.php script.
@@ -634,7 +634,7 @@ ini_set('session.cookie_lifetime', 2000000);
 #   include __DIR__ . '/settings.local.php';
 # }
 $databases['default']['default'] = array (
-  'database' => 'blog_keyral',
+  'database' => 'bog_keyral',
   'username' => 'root',
   'password' => 'morpheus',
   'prefix' => '',
@@ -644,9 +644,5 @@ $databases['default']['default'] = array (
   'driver' => 'mysql',
 );
 $settings['install_profile'] = 'standard';
-$config_directories['active'] = 'sites/default/files/config_PcmRSrUPj4UoYQFp0sPgd_Rqci4N2IufYgXUF57oidoxcuz-fWaYkyG3Pr5cG4-wQhBm2HqOZg/active';
-$config_directories['staging'] = 'sites/default/files/config_PcmRSrUPj4UoYQFp0sPgd_Rqci4N2IufYgXUF57oidoxcuz-fWaYkyG3Pr5cG4-wQhBm2HqOZg/staging';
-
-
-//Add debug twig
-$settings['twig_debug'] = TRUE;
+$config_directories['active'] = 'sites/default/files/config_w_gNpX8BANoux_IutEqPHTuVAjwwqUZyJBdoMbHZmvRIJLIsIf_kGeqUzKSX7D4e_JpF6l2m-Q/active';
+$config_directories['staging'] = 'sites/default/files/config_w_gNpX8BANoux_IutEqPHTuVAjwwqUZyJBdoMbHZmvRIJLIsIf_kGeqUzKSX7D4e_JpF6l2m-Q/staging';
