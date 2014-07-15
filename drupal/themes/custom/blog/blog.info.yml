@@ -1,5 +1,5 @@
-name: Basic
-description: 'HTML5, SASS, Responsive grid base theme.'
+name: Blog
+description: 'Theme for keyral blog.'
 core: 8.x
 type: theme
 stylesheets:

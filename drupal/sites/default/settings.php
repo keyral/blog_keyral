@@ -646,3 +646,7 @@ $databases['default']['default'] = array (
 $settings['install_profile'] = 'standard';
 $config_directories['active'] = 'sites/default/files/config_PcmRSrUPj4UoYQFp0sPgd_Rqci4N2IufYgXUF57oidoxcuz-fWaYkyG3Pr5cG4-wQhBm2HqOZg/active';
 $config_directories['staging'] = 'sites/default/files/config_PcmRSrUPj4UoYQFp0sPgd_Rqci4N2IufYgXUF57oidoxcuz-fWaYkyG3Pr5cG4-wQhBm2HqOZg/staging';
+
+
+//Add debug twig
+$settings['twig_debug'] = TRUE;
