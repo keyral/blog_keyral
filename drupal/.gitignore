@@ -8,11 +8,11 @@
 # name; updating Drupal core will not override your custom .gitignore file.
 
 # Ignore configuration files that may contain sensitive information.
-sites/*/settings*.php
+drupal/sites/*/settings*.php
 
 # Ignore paths that contain user-generated content.
-sites/*/files
-sites/*/private
+drupal/sites/*/files
+drupal/sites/*/private
 
 # Ignore SimpleTest multi-site environment.
 sites/simpletest
