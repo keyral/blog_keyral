@@ -69,8 +69,6 @@ class BlogBlocksFollowerMe extends BlockBase
 	 */
 	public function build()
 	{
-		var_dump($this);
-		die('lol');
 		$information = array(
 			'#type' => 'markup',
 			'#markup' => $this->configuration['blocks_followed_me_twitter'],
