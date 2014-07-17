@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * Implements hook_theme().
+ */
+function blog_blocks_theme()
+{
+    return array(
+// Template for follower me
+        'follower_me' => array(
+            'template' => 'block--followerme',
+            'variables' => array(
+                'winners' => NULL,
+            ),
+        ),
+    );
+}
