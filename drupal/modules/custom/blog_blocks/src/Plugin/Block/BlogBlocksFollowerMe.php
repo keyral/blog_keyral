@@ -40,8 +40,8 @@ class BlogBlocksFollowerMe extends BlockBase
     public function defaultConfiguration()
     {
         return array(
-            'blocks_followed_me_twitter' => t('mon premier petit test pour twitter', array('%time' => date('c'))),
-            'blocks_followed_me_github' => t('mon premier petit test pour github', array('%time' => date('c'))),
+            'blocks_followed_me_twitter' => t('mon premier petit test pour twitter %time', array('%time' => date('c'))),
+            'blocks_followed_me_github' => t('mon premier petit test pour github %time', array('%time' => date('c'))),
         );
     }
 
@@ -50,20 +50,31 @@ class BlogBlocksFollowerMe extends BlockBase
      */
     public function blockForm($form, &$form_state)
     {
-        $form['blocks_followed_me_twitter'] = array(
-            '#type' => 'textfield',
-            '#title' => t('Url to followed twitter'),
-            '#size' => 200,
-            '#description' => t('Information to twitter'),
-            '#default_value' => $this->configuration['blocks_followed_me_twitter'],
+        //var_dump($form);
+        $form['configuration'] = array(
+            '#type' => 'fieldset',
+            '#title' => t('Configuration'),
+            '#weight' => 1,
+            '#collapsible' => TRUE,
+            '#collapsed' => TRUE,
         );
-        $form['blocks_followed_me_github'] = array(
+
+
+        $form['configuration']['blocks_followed_me_github'] = array(
             '#type' => 'textfield',
             '#title' => t('Url to followed github'),
-            '#size' => 200,
+            '#size' => 150,
             '#description' => t('url to github.'),
             '#default_value' => $this->configuration['blocks_followed_me_github'],
         );
+        $form['configuration']['blocks_followed_me_twitter'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Url to followed twitter'),
+            '#size' => 150,
+            '#description' => t('url to twitter.'),
+            '#default_value' => $this->configuration['blocks_followed_me_twitter'],
+        );
+        //var_dump($form['visibility']);
         return $form;
     }
 
