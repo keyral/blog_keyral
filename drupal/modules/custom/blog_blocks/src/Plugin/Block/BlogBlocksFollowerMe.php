@@ -7,9 +7,10 @@
 
 namespace Drupal\blog_blocks\Plugin\Block;
 
-use Drupal\block\Annotation\Block;
 use Drupal\block\BlockBase;
+use Drupal\block\Annotation\Block;
 use Drupal\Core\Annotation\Translation;
+use Drupal\Core\Session\AccountInterface;
 
 /**
  * Provides a 'Example: configurable text string' block.
@@ -23,13 +24,22 @@ use Drupal\Core\Annotation\Translation;
 class BlogBlocksFollowerMe extends BlockBase
 {
 
+    /**
+     * {@inheritdoc}
+     */
+    public function settings() {
+        return array(
+            'cache' => DRUPAL_NO_CACHE,
+        );
+    }
 	/**
 	 * Overrides \Drupal\block\BlockBase::defaultConfiguration().
 	 */
 	public function defaultConfiguration()
 	{
 		return array(
-			'blocks_followed_me_twitter' => t('mon premier petit test', array('%time' => date('c'))),
+			'blocks_followed_me_twitter' => t('mon premier petit test pour twitter', array('%time' => date('c'))),
+            'blocks_followed_me_github' => t('mon premier petit test pour github', array('%time' => date('c'))),
 		);
 	}
 
@@ -71,7 +81,7 @@ class BlogBlocksFollowerMe extends BlockBase
 	{
 		$information = array(
 			'#type' => 'markup',
-			'#markup' => $this->configuration['blocks_followed_me_twitter'],
+			'#markup' => 'lol',
 		);
 	}
 
