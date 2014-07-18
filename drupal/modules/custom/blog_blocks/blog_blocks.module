@@ -10,7 +10,9 @@ function blog_blocks_theme()
         'follower_me' => array(
             'template' => 'block--followerme',
             'variables' => array(
-                'winners' => NULL,
+                'google' => NULL,
+                'twitter' => NULL,
+                'github' => NULL,
             ),
         ),
     );
