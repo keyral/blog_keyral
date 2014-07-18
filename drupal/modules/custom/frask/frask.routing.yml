@@ -1,0 +1,20 @@
+bingo:
+  path: 'frask'
+  defaults:
+    _content: '\Drupal\frask\FraskController::content'
+  requirements:
+    _permission: 'access content'
+
+bingo_add:
+  path: 'frask/add'
+  defaults:
+    _form: '\Drupal\frask\AddForm'
+  requirements:
+    _permission: 'access content'
+
+bingo_delete:
+  path: 'frask/delete/{id}'
+  defaults:
+    _form: '\Drupal\frask\DeleteForm'
+  requirements:
+    _permission: 'access content'
