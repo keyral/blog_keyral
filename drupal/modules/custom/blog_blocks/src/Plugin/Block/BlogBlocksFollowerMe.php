@@ -40,8 +40,9 @@ class BlogBlocksFollowerMe extends BlockBase
     public function defaultConfiguration()
     {
         return array(
-            'blocks_followed_me_twitter' => t('mon premier petit test pour twitter %time', array('%time' => date('c'))),
-            'blocks_followed_me_github' => t('mon premier petit test pour github %time', array('%time' => date('c'))),
+            'blocks_followed_me_twitter' => t('Url de twitter'),
+            'blocks_followed_me_github' => t('Url du github'),
+            'blocks_followed_me_google' => t('Url de google plus'),
         );
     }
 
@@ -50,7 +51,6 @@ class BlogBlocksFollowerMe extends BlockBase
      */
     public function blockForm($form, &$form_state)
     {
-        //var_dump($form);
         $form['configuration'] = array(
             '#type' => 'fieldset',
             '#title' => t('Configuration'),
@@ -74,7 +74,13 @@ class BlogBlocksFollowerMe extends BlockBase
             '#description' => t('url to twitter.'),
             '#default_value' => $this->configuration['blocks_followed_me_twitter'],
         );
-        //var_dump($form['visibility']);
+        $form['configuration']['blocks_followed_me_google'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Url to followed google'),
+            '#size' => 150,
+            '#description' => t('url to google.'),
+            '#default_value' => $this->configuration['blocks_followed_me_google'],
+        );
         return $form;
     }
 
@@ -83,8 +89,9 @@ class BlogBlocksFollowerMe extends BlockBase
      */
     public function blockSubmit($form, &$form_state)
     {
-        $this->configuration['blocks_followed_me_twitter'] = $form_state['values']['blocks_followed_me_twitter'];
-        $this->configuration['blocks_followed_me_github'] = $form_state['values']['blocks_followed_me_github'];
+        $this->configuration['blocks_followed_me_twitter'] = $form_state['values']['configuration']['blocks_followed_me_twitter'];
+        $this->configuration['blocks_followed_me_github'] = $form_state['values']['configuration']['blocks_followed_me_github'];
+        $this->configuration['blocks_followed_me_google'] = $form_state['values']['configuration']['blocks_followed_me_google'];
     }
 
     /**
@@ -94,7 +101,9 @@ class BlogBlocksFollowerMe extends BlockBase
     {
         return array(
             '#theme' => 'follower_me',
-            '#winners' => array('tros', 'lolilolz'),
+            '#google' => $this->configuration['blocks_followed_me_google'],
+            '#github' => $this->configuration['blocks_followed_me_github'],
+            '#twitter' => $this->configuration['blocks_followed_me_twitter'],
             '#attached' => array(
                 'css' => array(drupal_get_path('module', 'blog_blocks') . '/css/block_follower_me.css'),
             ),

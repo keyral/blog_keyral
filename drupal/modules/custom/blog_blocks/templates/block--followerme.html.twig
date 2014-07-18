@@ -1,8 +1,13 @@
 <section class="follower-me-block">
     <ul class="follower-me-list">
-        mdr
-        {% for winner in winners %}
-            <li><span class="">{{ winner }}</span><span class="">{{ winner }}</span></li>
-        {% endfor %}
+        {% if twitter %}
+            <li><a href="{{ twitter }}">Twitter</a></li>
+        {% endif %}
+        {% if github %}
+            <li><a href="{{ github }}">Google</a></li>
+        {% endif %}
+        {% if google %}
+            <li><a href="{{ google }}">Google</a></li>
+        {% endif %}
     </ul>
 </section>
