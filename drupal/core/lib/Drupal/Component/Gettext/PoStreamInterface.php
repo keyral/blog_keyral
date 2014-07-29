@@ -18,12 +18,12 @@ interface PoStreamInterface {
   /**
    * Open the stream. Set the URI for the stream earlier with setURI().
    */
-  public function open();
+  function open();
 
   /**
    * Close the stream.
    */
-  public function close();
+  function close();
 
   /**
    * Get the URI of the PO stream that is being read or written.
@@ -31,7 +31,7 @@ interface PoStreamInterface {
    * @return
    *   URI string for this stream.
    */
-  public function getURI();
+  function getURI();
 
   /**
    * Set the URI of the PO stream that is going to be read or written.
@@ -39,6 +39,5 @@ interface PoStreamInterface {
    * @param $uri
    *   URI string to set for this stream.
    */
-  public function setURI($uri);
-
+  function setURI($uri);
 }

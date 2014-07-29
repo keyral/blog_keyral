@@ -2,40 +2,43 @@
 
 /**
  * @file
- * API functions for processing and sending email.
+ * API functions for processing and sending e-mail.
  */
 
-use Drupal\Component\Utility\Html;
-use Drupal\Component\Utility\Xss;
-use Drupal\Core\Site\Settings;
+/**
+ * Auto-detect appropriate line endings for e-mails.
+ *
+ * $conf['mail_line_endings'] will override this setting.
+ */
+define('MAIL_LINE_ENDINGS', isset($_SERVER['WINDIR']) || strpos($_SERVER['SERVER_SOFTWARE'], 'Win32') !== FALSE ? "\r\n" : "\n");
 
 /**
- * Composes and optionally sends an email message.
+ * Composes and optionally sends an e-mail message.
  *
- * Sending an email works with defining an email template (subject, text
- * and possibly email headers) and the replacement values to use in the
- * appropriate places in the template. Processed email templates are
- * requested from hook_mail() from the module sending the email. Any module
- * can modify the composed email message array using hook_mail_alter().
- * Finally drupal_mail_system()->mail() sends the email, which can
- * be reused if the exact same composed email is to be sent to multiple
+ * Sending an e-mail works with defining an e-mail template (subject, text
+ * and possibly e-mail headers) and the replacement values to use in the
+ * appropriate places in the template. Processed e-mail templates are
+ * requested from hook_mail() from the module sending the e-mail. Any module
+ * can modify the composed e-mail message array using hook_mail_alter().
+ * Finally drupal_mail_system()->mail() sends the e-mail, which can
+ * be reused if the exact same composed e-mail is to be sent to multiple
  * recipients.
  *
- * Finding out what language to send the email with needs some consideration.
- * If you send email to a user, her preferred language should be fine, so
+ * Finding out what language to send the e-mail with needs some consideration.
+ * If you send e-mail to a user, her preferred language should be fine, so
  * use user_preferred_langcode(). If you send email based on form values
  * filled on the page, there are two additional choices if you are not
- * sending the email to a user on the site. You can either use the language
+ * sending the e-mail to a user on the site. You can either use the language
  * used to generate the page or the site default language. See
- * language_default(). The former is good if sending email to the person
- * filling the form, the later is good if you send email to an address
+ * language_default(). The former is good if sending e-mail to the person
+ * filling the form, the later is good if you send e-mail to an address
  * previously set up (like contact addresses in a contact form).
  *
  * Taking care of always using the proper language is even more important
- * when sending emails in a row to multiple users. Hook_mail() abstracts
+ * when sending e-mails in a row to multiple users. Hook_mail() abstracts
  * whether the mail text comes from an administrator setting or is
  * static in the source code. It should also deal with common mail tokens,
- * only receiving $params which are unique to the actual email at hand.
+ * only receiving $params which are unique to the actual e-mail at hand.
  *
  * An example:
  *
@@ -80,29 +83,27 @@ use Drupal\Core\Site\Settings;
  *   }
  * @endcode
  *
- * @param string $module
+ * @param $module
  *   A module name to invoke hook_mail() on. The {$module}_mail() hook will be
  *   called to complete the $message structure which will already contain common
  *   defaults.
- * @param string $key
- *   A key to identify the email sent. The final message ID for email altering
+ * @param $key
+ *   A key to identify the e-mail sent. The final e-mail id for e-mail altering
  *   will be {$module}_{$key}.
- * @param string $to
- *   The email address or addresses where the message will be sent to. The
- *   formatting of this string will be validated with the
- *   @link http://php.net/manual/filter.filters.validate.php PHP email validation filter. @endlink
- *   Some examples are:
+ * @param $to
+ *   The e-mail address or addresses where the message will be sent to. The
+ *   formatting of this string must comply with RFC 2822. Some examples are:
  *   - user@example.com
  *   - user@example.com, anotheruser@example.com
  *   - User <user@example.com>
  *   - User <user@example.com>, Another User <anotheruser@example.com>
- * @param string $langcode
- *   Language code to use to compose the email.
- * @param array $params
- *   (optional) Parameters to build the email.
- * @param string|null $reply
- *   Optional email address to be used to answer.
- * @param bool $send
+ * @param $langcode
+ *   Language code to use to compose the e-mail.
+ * @param $params
+ *   (optional) parameters to build the e-mail.
+ * @param $from
+ *   Sets From to this value, if given.
+ * @param $send
  *   If TRUE, drupal_mail() will call drupal_mail_system()->mail() to deliver
  *   the message, and store the result in $message['result']. Modules
  *   implementing hook_mail_alter() may cancel sending by setting
@@ -111,16 +112,16 @@ use Drupal\Core\Site\Settings;
  * @return
  *   The $message array structure containing all details of the
  *   message. If already sent ($send = TRUE), then the 'result' element
- *   will contain the success indicator of the email, failure being already
+ *   will contain the success indicator of the e-mail, failure being already
  *   written to the watchdog. (Success means nothing more than the message being
  *   accepted at php-level, which still doesn't guarantee it to be delivered.)
  */
-function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = NULL, $send = TRUE) {
-  $site_config = \Drupal::config('system.site');
-  $site_mail = $site_config->get('mail');
+function drupal_mail($module, $key, $to, $langcode, $params = array(), $from = NULL, $send = TRUE) {
+  $site_mail = config('system.site')->get('mail');
   if (empty($site_mail)) {
     $site_mail = ini_get('sendmail_from');
   }
+  $default_from = $site_mail;
 
   // Bundle up the variables into a structured array for altering.
   $message = array(
@@ -128,8 +129,7 @@ function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = 
     'module'   => $module,
     'key'      => $key,
     'to'       => $to,
-    'from'     => $site_mail,
-    'reply-to' => $reply,
+    'from'     => isset($from) ? $from : $default_from,
     'langcode' => $langcode,
     'params'   => $params,
     'send'     => TRUE,
@@ -144,26 +144,26 @@ function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = 
     'Content-Transfer-Encoding' => '8Bit',
     'X-Mailer'                  => 'Drupal'
   );
-  // To prevent email from looking like spam, the addresses in the Sender and
-  // Return-Path headers should have a domain authorized to use the
-  // originating SMTP server.
-  $headers['Sender'] = $headers['Return-Path'] = $site_mail;
-  $headers['From'] = $site_config->get('name') . ' <' . $site_mail . '>';
-  if ($reply) {
-    $headers['Reply-to'] = $reply;
+  if ($default_from) {
+    // To prevent e-mail from looking like spam, the addresses in the Sender and
+    // Return-Path headers should have a domain authorized to use the originating
+    // SMTP server.
+    $headers['From'] = $headers['Sender'] = $headers['Return-Path'] = $default_from;
+  }
+  if ($from) {
+    $headers['From'] = $from;
   }
   $message['headers'] = $headers;
 
-  // Build the email (get subject and body, allow additional headers) by
-  // invoking hook_mail() on this module. We cannot use
-  // moduleHandler()->invoke() as we need to have $message by reference in
-  // hook_mail().
+  // Build the e-mail (get subject and body, allow additional headers) by
+  // invoking hook_mail() on this module. We cannot use module_invoke() as
+  // we need to have $message by reference in hook_mail().
   if (function_exists($function = $module . '_mail')) {
     $function($key, $message, $params);
   }
 
-  // Invoke hook_mail_alter() to allow all modules to alter the resulting email.
-  \Drupal::moduleHandler()->alter('mail', $message);
+  // Invoke hook_mail_alter() to allow all modules to alter the resulting e-mail.
+  drupal_alter('mail', $message);
 
   // Retrieve the responsible implementation for this message.
   $system = drupal_mail_system($module, $key);
@@ -171,7 +171,7 @@ function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = 
   // Format the message body.
   $message = $system->format($message);
 
-  // Optionally send email.
+  // Optionally send e-mail.
   if ($send) {
     // The original caller requested sending. Sending was canceled by one or
     // more hook_mail_alter() implementations. We set 'result' to NULL, because
@@ -184,8 +184,8 @@ function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = 
       $message['result'] = $system->mail($message);
       // Log errors.
       if (!$message['result']) {
-        \Drupal::logger('mail')->error('Error sending email (from %from to %to with reply-to %reply).', array('%from' => $message['from'], '%to' => $message['to'], '%reply' => $message['reply-to'] ? $message['reply-to'] : t('not set')));
-        drupal_set_message(t('Unable to send email. Contact the site administrator if the problem persists.'), 'error');
+        watchdog('mail', 'Error sending e-mail (from %from to %to).', array('%from' => $message['from'], '%to' => $message['to']), WATCHDOG_ERROR);
+        drupal_set_message(t('Unable to send e-mail. Contact the site administrator if the problem persists.'), 'error');
       }
     }
   }
@@ -194,23 +194,98 @@ function drupal_mail($module, $key, $to, $langcode, $params = array(), $reply = 
 }
 
 /**
- * Returns an instance of the mail plugin to use for a given message ID.
+ * Returns an object that implements Drupal\Core\Mail\MailInterface.
  *
- * @param string $module
+ * Allows for one or more custom mail backends to format and send mail messages
+ * composed using drupal_mail().
+ *
+ * An implementation needs to implement the following methods:
+ * - format: Allows to preprocess, format, and postprocess a mail
+ *   message before it is passed to the sending system. By default, all messages
+ *   may contain HTML and are converted to plain-text by the
+ *   Drupal\Core\Mail\PhpMail implementation. For example, an alternative
+ *   implementation could override the default implementation and additionally
+ *   sanitize the HTML for usage in a MIME-encoded e-mail, but still invoking
+ *   the Drupal\Core\Mail\PhpMail implementation to generate an alternate
+ *   plain-text version for sending.
+ * - mail: Sends a message through a custom mail sending engine.
+ *   By default, all messages are sent via PHP's mail() function by the
+ *   Drupal\Core\Mail\PhpMail implementation.
+ *
+ * The selection of a particular implementation is controlled via the variable
+ * 'mail_system', which is a keyed array.  The default implementation
+ * is the class whose name is the value of 'default-system' key. A more specific
+ * match first to key and then to module will be used in preference to the
+ * default. To specify a different class for all mail sent by one module, set
+ * the class name as the value for the key corresponding to the module name. To
+ * specify a class for a particular message sent by one module, set the class
+ * name as the value for the array key that is the message id, which is
+ * "${module}_${key}".
+ *
+ * For example to debug all mail sent by the user module by logging it to a
+ * file, you might set the variable as something like:
+ *
+ * @code
+ * array(
+ *   'default-system' => 'Drupal\Core\Mail\PhpMail',
+ *   'user' => 'DevelMailLog',
+ * );
+ * @endcode
+ *
+ * Finally, a different system can be specified for a specific e-mail ID (see
+ * the $key param), such as one of the keys used by the contact module:
+ *
+ * @code
+ * array(
+ *   'default-system' => 'Drupal\Core\Mail\PhpMail',
+ *   'user' => 'DevelMailLog',
+ *   'contact_page_autoreply' => 'DrupalDevNullMailSend',
+ * );
+ * @endcode
+ *
+ * Other possible uses for system include a mail-sending class that actually
+ * sends (or duplicates) each message to SMS, Twitter, instant message, etc, or
+ * a class that queues up a large number of messages for more efficient bulk
+ * sending or for sending via a remote gateway so as to reduce the load
+ * on the local server.
+ *
+ * @param $module
  *   The module name which was used by drupal_mail() to invoke hook_mail().
- * @param string $key
- *   A key to identify the email sent. The final message ID for the email
+ * @param $key
+ *   A key to identify the e-mail sent. The final e-mail ID for the e-mail
  *   alter hook in drupal_mail() would have been {$module}_{$key}.
  *
- * @return \Drupal\Core\Mail\MailInterface
- *   A mail plugin instance.
- *
- * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
- *
- * @see \Drupal\Core\Mail\MailManager::getInstance()
+ * @return Drupal\Core\Mail\MailInterface
  */
 function drupal_mail_system($module, $key) {
-  return \Drupal::service('plugin.manager.mail')->getInstance(array('module' => $module, 'key' => $key));
+  $instances = &drupal_static(__FUNCTION__, array());
+
+  $id = $module . '_' . $key;
+
+  $configuration = variable_get('mail_system', array('default-system' => 'Drupal\Core\Mail\PhpMail'));
+
+  // Look for overrides for the default class, starting from the most specific
+  // id, and falling back to the module name.
+  if (isset($configuration[$id])) {
+    $class = $configuration[$id];
+  }
+  elseif (isset($configuration[$module])) {
+    $class = $configuration[$module];
+  }
+  else {
+    $class = $configuration['default-system'];
+  }
+
+  if (empty($instances[$class])) {
+    $interfaces = class_implements($class);
+    if (isset($interfaces['Drupal\Core\Mail\MailInterface'])) {
+      $instances[$class] = new $class();
+    }
+    else {
+      throw new Exception(t('Class %class does not implement interface %interface', array('%class' => $class, '%interface' => 'Drupal\Core\Mail\MailInterface')));
+    }
+  }
+  return $instances[$class];
 }
 
 /**
@@ -292,7 +367,7 @@ function drupal_html_to_text($string, $allowed_tags = NULL) {
   $allowed_tags = isset($allowed_tags) ? array_intersect($supported_tags, $allowed_tags) : $supported_tags;
 
   // Make sure tags, entities and attributes are well-formed and properly nested.
-  $string = Html::normalize(Xss::filter($string, $allowed_tags));
+  $string = _filter_htmlcorrector(filter_xss($string, $allowed_tags));
 
   // Apply inline styles.
   $string = preg_replace('!</?(em|i)((?> +)[^>]*)?>!i', '/', $string);
@@ -427,9 +502,8 @@ function drupal_html_to_text($string, $allowed_tags = NULL) {
       if (isset($casing)) {
         $chunk = $casing($chunk);
       }
-      $line_endings = Settings::get('mail_line_endings', PHP_EOL);
       // Format it and apply the current indentation.
-      $output .= drupal_wrap_mail($chunk, implode('', $indent)) . $line_endings;
+      $output .= drupal_wrap_mail($chunk, implode('', $indent)) . MAIL_LINE_ENDINGS;
       // Remove non-quotation markers from indentation.
       $indent = array_map('_drupal_html_to_text_clean', $indent);
     }
@@ -444,36 +518,10 @@ function drupal_html_to_text($string, $allowed_tags = NULL) {
  * Wraps words on a single line.
  *
  * Callback for array_walk() winthin drupal_wrap_mail().
- *
- * Note that we are skipping MIME content header lines, because attached files,
- * especially applications, could have long MIME types or long filenames which
- * result in line length longer than the 77 characters limit and wrapping that
- * line will break the email format. E.g., the attached file hello_drupal.docx
- * will produce the following Content-Type:
- * Content-Type:
- * application/vnd.openxmlformats-officedocument.wordprocessingml.document;
- * name="hello_drupal.docx"
  */
 function _drupal_wrap_mail_line(&$line, $key, $values) {
-  $line_is_mime_header = FALSE;
-  $mime_headers = array(
-    'Content-Type',
-    'Content-Transfer-Encoding',
-    'Content-Disposition',
-    'Content-Description',
-  );
-
-  // Do not break MIME headers which could be longer than 77 characters.
-  foreach ($mime_headers as $header) {
-    if (strpos($line, $header . ': ') === 0) {
-      $line_is_mime_header = TRUE;
-      break;
-    }
-  }
-  if (!$line_is_mime_header) {
-    // Use soft-breaks only for purely quoted or unindented text.
-    $line = wordwrap($line, 77 - $values['length'], $values['soft'] ? " \n" : "\n");
-  }
+  // Use soft-breaks only for purely quoted or unindented text.
+  $line = wordwrap($line, 77 - $values['length'], $values['soft'] ? "  \n" : "\n");
   // Break really long words at the maximum width allowed.
   $line = wordwrap($line, 996 - $values['length'], $values['soft'] ? " \n" : "\n");
 }

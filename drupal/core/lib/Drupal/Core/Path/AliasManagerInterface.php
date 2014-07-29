@@ -10,37 +10,48 @@ namespace Drupal\Core\Path;
 interface AliasManagerInterface {
 
   /**
-   * Given the alias, return the path it represents.
+   * Given a path alias, return the internal path it represents.
    *
-   * @param string $alias
-   *   An alias.
-   * @param string $langcode
+   * @param $path
+   *   A Drupal path alias.
+   * @param $path_language
    *   An optional language code to look up the path in.
    *
-   * @return string
-   *   The path represented by alias, or the alias if no path was found.
+   * @return
+   *   The internal path represented by the alias, or the original alias if no
+   *   internal path was found.
    */
-  public function getPathByAlias($alias, $langcode = NULL);
+  public function getSystemPath($path, $path_language = NULL);
 
   /**
-   * Given a path, return the alias.
+   * Given an internal Drupal path, return the alias set by the administrator.
    *
-   * @param string $path
-   *   A path.
-   * @param string $langcode
+   * @param $path
+   *   An internal Drupal path.
+   *
+   * @param $path_language
    *   An optional language code to look up the path in.
    *
-   * @return string
-   *   An alias that represents the path, or path if no alias was found.
+   * @return
+   *   An aliased path if one was found, or the original path if no alias was
+   *   found.
    */
-  public function getAliasByPath($path, $langcode = NULL);
+  public function getPathAlias($path, $path_language = NULL);
 
   /**
-   * Clear internal caches in alias manager.
+   * Returns an array of system paths that have been looked up.
    *
-   * @param $source
-   *   Source path of the alias that is being inserted/updated. Can be ommitted
-   *   if entire cache needs to be flushed.
+   * @return array
+   *   An array of all system paths that have been looked up during the current
+   *   request.
    */
-  public function cacheClear($source = NULL);
+  public function getPathLookups();
+
+  /**
+   * Preload a set of paths for bulk alias lookups.
+   *
+   * @param $path_list
+   *   An array of system paths.
+   */
+  public function preloadPathLookups(array $path_list);
 }

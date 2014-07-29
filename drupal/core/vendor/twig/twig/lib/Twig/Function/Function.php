@@ -13,10 +13,8 @@
 /**
  * Represents a function template function.
  *
- * Use Twig_SimpleFunction instead.
- *
- * @author Arnaud Le Blanc <arnaud.lb@gmail.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package    twig
+ * @author     Arnaud Le Blanc <arnaud.lb@gmail.com>
  */
 class Twig_Function_Function extends Twig_Function
 {
@@ -24,8 +22,6 @@ class Twig_Function_Function extends Twig_Function
 
     public function __construct($function, array $options = array())
     {
-        $options['callable'] = $function;
-
         parent::__construct($options);
 
         $this->function = $function;

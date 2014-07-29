@@ -3,33 +3,38 @@
 /**
  * @file
  * Fake an HTTPS request, for use during testing.
- *
- * @todo Fix this to use a new request rather than modifying server variables,
- *   see http.php.
  */
 
-use Drupal\Core\Test\TestKernel;
+use Drupal\Core\DrupalKernel;
 use Symfony\Component\HttpFoundation\Request;
-
-chdir('../../../..');
-
-$autoloader = require_once './core/vendor/autoload.php';
 
 // Set a global variable to indicate a mock HTTPS request.
 $is_https_mock = empty($_SERVER['HTTPS']);
 
 // Change to HTTPS.
 $_SERVER['HTTPS'] = 'on';
-foreach ($_SERVER as &$value) {
-  $value = str_replace('core/modules/system/tests/https.php', 'index.php', $value);
-  $value = str_replace('http://', 'https://', $value);
+foreach ($_SERVER as $key => $value) {
+  $_SERVER[$key] = str_replace('core/modules/system/tests/https.php', 'index.php', $value);
+  $_SERVER[$key] = str_replace('http://', 'https://', $_SERVER[$key]);
 }
 
+// Change current directory to the Drupal root.
+chdir('../../../..');
+define('DRUPAL_ROOT', getcwd());
+require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+
+// Make sure this file can only be used by simpletest.
+drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
+if (!drupal_valid_test_ua()) {
+  header($_SERVER['SERVER_PROTOCOL'] . ' 403 Forbidden');
+  exit;
+}
+
+// Continue with normal request handling.
 $request = Request::createFromGlobals();
-$kernel = TestKernel::createFromRequest($request, $autoloader, 'testing', TRUE);
-$response = $kernel
-  ->handlePageCache($request)
-  ->handle($request)
-    // Handle the response object.
-    ->prepare($request)->send();
+
+drupal_bootstrap(DRUPAL_BOOTSTRAP_CODE);
+
+$kernel = new DrupalKernel('prod', FALSE, drupal_classloader(), FALSE);
+$response = $kernel->handle($request)->prepare($request)->send();
 $kernel->terminate($request, $response);

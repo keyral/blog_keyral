@@ -3,7 +3,7 @@
 /*
  * This file is part of the Assetic package, an OpenSky project.
  *
- * (c) 2010-2013 OpenSky Project Inc
+ * (c) 2010-2012 OpenSky Project Inc
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,9 +11,8 @@
 
 namespace Assetic\Filter;
 
-use Assetic\Asset\AssetInterface;
-use Assetic\Factory\AssetFactory;
 use CssEmbed\CssEmbed;
+use Assetic\Asset\AssetInterface;
 
 /**
  * A filter that embed url directly into css
@@ -21,7 +20,7 @@ use CssEmbed\CssEmbed;
  * @author Pierre Tachoire <pierre.tachoire@gmail.com>
  * @link https://github.com/krichprollsch/phpCssEmbed
  */
-class PhpCssEmbedFilter implements DependencyExtractorInterface
+class PhpCssEmbedFilter implements FilterInterface
 {
     private $presets = array();
 
@@ -45,11 +44,5 @@ class PhpCssEmbedFilter implements DependencyExtractorInterface
 
     public function filterDump(AssetInterface $asset)
     {
-    }
-
-    public function getChildren(AssetFactory $factory, $content, $loadPath = null)
-    {
-        // todo
-        return array();
     }
 }

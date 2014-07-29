@@ -3,7 +3,7 @@
 /*
  * This file is part of the Assetic package, an OpenSky project.
  *
- * (c) 2010-2013 OpenSky Project Inc
+ * (c) 2010-2012 OpenSky Project Inc
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,9 +11,10 @@
 
 namespace Assetic\Filter;
 
-use Assetic\Asset\AssetInterface;
 use Assetic\Exception\FilterException;
-use Assetic\Factory\AssetFactory;
+use Assetic\Asset\AssetInterface;
+use Assetic\Filter\FilterInterface;
+use Symfony\Component\Process\ProcessBuilder;
 
 /**
  * Loads Compass files.
@@ -21,7 +22,7 @@ use Assetic\Factory\AssetFactory;
  * @link http://compass-style.org/
  * @author Maxime Thirouin <maxime.thirouin@gmail.com>
  */
-class CompassFilter extends BaseProcessFilter implements DependencyExtractorInterface
+class CompassFilter implements FilterInterface
 {
     private $compassPath;
     private $rubyPath;
@@ -41,15 +42,12 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
     private $noLineComments;
     private $imagesDir;
     private $javascriptsDir;
-    private $fontsDir;
 
     // compass configuration file options
     private $plugins = array();
     private $loadPaths = array();
     private $httpPath;
     private $httpImagesPath;
-    private $httpFontsPath;
-    private $httpGeneratedImagesPath;
     private $generatedImagesPath;
     private $httpJavascriptsPath;
     private $homeEnv = true;
@@ -127,11 +125,6 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
         $this->javascriptsDir = $javascriptsDir;
     }
 
-    public function setFontsDir($fontsDir)
-    {
-        $this->fontsDir = $fontsDir;
-    }
-
     // compass configuration file options setters
     public function setPlugins(array $plugins)
     {
@@ -161,16 +154,6 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
     public function setHttpImagesPath($httpImagesPath)
     {
         $this->httpImagesPath = $httpImagesPath;
-    }
-
-    public function setHttpFontsPath($httpFontsPath)
-    {
-        $this->httpFontsPath = $httpFontsPath;
-    }
-
-    public function setHttpGeneratedImagesPath($httpGeneratedImagesPath)
-    {
-        $this->httpGeneratedImagesPath = $httpGeneratedImagesPath;
     }
 
     public function setGeneratedImagesPath($generatedImagesPath)
@@ -210,7 +193,8 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
             $compassProcessArgs = array_merge(explode(' ', $this->rubyPath), $compassProcessArgs);
         }
 
-        $pb = $this->createProcessBuilder($compassProcessArgs);
+        $pb = new ProcessBuilder($compassProcessArgs);
+        $pb->inheritEnvironmentVariables();
 
         if ($this->force) {
             $pb->add('--force');
@@ -274,24 +258,12 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
             $optionsConfig['http_images_path'] = $this->httpImagesPath;
         }
 
-        if ($this->httpFontsPath) {
-            $optionsConfig['http_fonts_path'] = $this->httpFontsPath;
-        }
-
-        if ($this->httpGeneratedImagesPath) {
-            $optionsConfig['http_generated_images_path'] = $this->httpGeneratedImagesPath;
-        }
-
         if ($this->generatedImagesPath) {
             $optionsConfig['generated_images_path'] = $this->generatedImagesPath;
         }
 
         if ($this->httpJavascriptsPath) {
             $optionsConfig['http_javascripts_path'] = $this->httpJavascriptsPath;
-        }
-
-        if ($this->fontsDir) {
-            $optionsConfig['fonts_dir'] = $this->fontsDir;
         }
 
         // options in configuration file
@@ -345,13 +317,12 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
         if ($this->homeEnv) {
             // it's not really usefull but... https://github.com/chriseppstein/compass/issues/376
             $pb->setEnv('HOME', sys_get_temp_dir());
-            $this->mergeEnv($pb);
         }
 
         $proc = $pb->getProcess();
         $code = $proc->run();
 
-        if (0 !== $code) {
+        if (0 < $code) {
             unlink($input);
             if (isset($configFile)) {
                 unlink($configFile);
@@ -371,12 +342,6 @@ class CompassFilter extends BaseProcessFilter implements DependencyExtractorInte
 
     public function filterDump(AssetInterface $asset)
     {
-    }
-
-    public function getChildren(AssetFactory $factory, $content, $loadPath = null)
-    {
-        // todo
-        return array();
     }
 
     private function formatArrayToRuby($array)

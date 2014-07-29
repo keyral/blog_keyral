@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Contains \Drupal\Component\Plugin\PluginManagerInterface
+ * Definition of Drupal\Component\Plugin\PluginManagerInterface
  */
 
 namespace Drupal\Component\Plugin;
@@ -25,9 +25,7 @@ use Drupal\Component\Plugin\Mapper\MapperInterface;
  * To follow this pattern, plugin managers can extend from the PluginManagerBase
  * class, which contains the proxying logic.
  *
- * @see \Drupal\Component\Plugin\PluginManagerBase
- *
- * @ingroup plugin_api
+ * @see Drupal\Component\Plugin\PluginManagerBase
  */
 interface PluginManagerInterface extends DiscoveryInterface, FactoryInterface, MapperInterface {
 }

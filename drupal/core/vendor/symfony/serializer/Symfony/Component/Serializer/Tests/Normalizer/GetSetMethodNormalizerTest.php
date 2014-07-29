@@ -17,18 +17,17 @@ class GetSetMethodNormalizerTest extends \PHPUnit_Framework_TestCase
 {
     protected function setUp()
     {
-        $this->normalizer = new GetSetMethodNormalizer();
+        $this->normalizer = new GetSetMethodNormalizer;
         $this->normalizer->setSerializer($this->getMock('Symfony\Component\Serializer\Serializer'));
     }
 
     public function testNormalize()
     {
-        $obj = new GetSetDummy();
+        $obj = new GetSetDummy;
         $obj->setFoo('foo');
         $obj->setBar('bar');
-        $obj->setCamelCase('camelcase');
         $this->assertEquals(
-            array('foo' => 'foo', 'bar' => 'bar', 'fooBar' => 'foobar', 'camelCase' => 'camelcase'),
+            array('foo' => 'foo', 'bar' => 'bar', 'fooBar' => 'foobar'),
             $this->normalizer->normalize($obj, 'any')
         );
     }
@@ -42,39 +41,6 @@ class GetSetMethodNormalizerTest extends \PHPUnit_Framework_TestCase
         );
         $this->assertEquals('foo', $obj->getFoo());
         $this->assertEquals('bar', $obj->getBar());
-    }
-
-    public function testDenormalizeOnCamelCaseFormat()
-    {
-        $this->normalizer->setCamelizedAttributes(array('camel_case'));
-        $obj = $this->normalizer->denormalize(
-            array('camel_case' => 'camelCase'),
-            __NAMESPACE__.'\GetSetDummy'
-        );
-        $this->assertEquals('camelCase', $obj->getCamelCase());
-    }
-
-    /**
-     * @dataProvider attributeProvider
-     */
-    public function testFormatAttribute($attribute, $camelizedAttributes, $result)
-    {
-        $r = new \ReflectionObject($this->normalizer);
-        $m = $r->getMethod('formatAttribute');
-        $m->setAccessible(true);
-
-        $this->normalizer->setCamelizedAttributes($camelizedAttributes);
-        $this->assertEquals($m->invoke($this->normalizer, $attribute, $camelizedAttributes), $result);
-    }
-
-    public function attributeProvider()
-    {
-        return array(
-            array('attribute_test', array('attribute_test'),'AttributeTest'),
-            array('attribute_test', array('any'),'attribute_test'),
-            array('attribute', array('attribute'),'Attribute'),
-            array('attribute', array(), 'attribute'),
-        );
     }
 
     public function testConstructorDenormalize()
@@ -116,9 +82,9 @@ class GetSetMethodNormalizerTest extends \PHPUnit_Framework_TestCase
 
     public function testIgnoredAttributes()
     {
-        $this->normalizer->setIgnoredAttributes(array('foo', 'bar', 'camelCase'));
+        $this->normalizer->setIgnoredAttributes(array('foo', 'bar'));
 
-        $obj = new GetSetDummy();
+        $obj = new GetSetDummy;
         $obj->setFoo('foo');
         $obj->setBar('bar');
 
@@ -194,7 +160,6 @@ class GetSetDummy
 {
     protected $foo;
     private $bar;
-    protected $camelCase;
 
     public function getFoo()
     {
@@ -218,17 +183,7 @@ class GetSetDummy
 
     public function getFooBar()
     {
-        return $this->foo.$this->bar;
-    }
-
-    public function getCamelCase()
-    {
-        return $this->camelCase;
-    }
-
-    public function setCamelCase($camelCase)
-    {
-        $this->camelCase = $camelCase;
+        return $this->foo . $this->bar;
     }
 
     public function otherMethod()

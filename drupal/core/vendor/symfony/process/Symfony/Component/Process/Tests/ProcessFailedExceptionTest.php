@@ -11,7 +11,8 @@
 
 namespace Symfony\Component\Process\Tests;
 
-use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process,
+    Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * @author Sebastian Marek <proofek@gmail.com>
@@ -36,8 +37,7 @@ class ProcessFailedExceptionTest extends \PHPUnit_Framework_TestCase
             '\InvalidArgumentException',
             'Expected a failed process, but the given process was successful.'
         );
-
-        new ProcessFailedException($process);
+        $exception = new ProcessFailedException($process);
     }
 
     /**
@@ -47,14 +47,12 @@ class ProcessFailedExceptionTest extends \PHPUnit_Framework_TestCase
     public function testProcessFailedExceptionPopulatesInformationFromProcessOutput()
     {
         $cmd = 'php';
-        $exitCode = 1;
-        $exitText = 'General error';
         $output = "Command output";
         $errorOutput = "FATAL: Unexpected error";
 
         $process = $this->getMock(
             'Symfony\Component\Process\Process',
-            array('isSuccessful', 'getOutput', 'getErrorOutput', 'getExitCode', 'getExitCodeText'),
+            array('isSuccessful', 'getOutput', 'getErrorOutput'),
             array($cmd)
         );
         $process->expects($this->once())
@@ -66,17 +64,11 @@ class ProcessFailedExceptionTest extends \PHPUnit_Framework_TestCase
         $process->expects($this->once())
             ->method('getErrorOutput')
             ->will($this->returnValue($errorOutput));
-        $process->expects($this->once())
-            ->method('getExitCode')
-            ->will($this->returnValue($exitCode));
-        $process->expects($this->once())
-            ->method('getExitCodeText')
-            ->will($this->returnValue($exitText));
 
         $exception = new ProcessFailedException($process);
 
         $this->assertEquals(
-            "The command \"$cmd\" failed.\nExit Code: $exitCode($exitText)\n\nOutput:\n================\n{$output}\n\nError Output:\n================\n{$errorOutput}",
+            "The command \"$cmd\" failed.\n\nOutput:\n================\n{$output}\n\nError Output:\n================\n{$errorOutput}",
             $exception->getMessage()
         );
     }

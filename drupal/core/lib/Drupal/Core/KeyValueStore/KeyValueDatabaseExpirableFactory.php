@@ -7,68 +7,27 @@
 
 namespace Drupal\Core\KeyValueStore;
 
-use Drupal\Component\Serialization\SerializationInterface;
-use Drupal\Core\DestructableInterface;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\Database;
+use Drupal\Core\KeyValueStore\KeyValueDatabaseFactory;
 
 /**
  * Defines the key/value store factory for the database backend.
  */
-class KeyValueDatabaseExpirableFactory implements KeyValueExpirableFactoryInterface, DestructableInterface {
+class KeyValueDatabaseExpirableFactory extends KeyValueDatabaseFactory {
 
   /**
-   * Holds references to each instantiation so they can be terminated.
+   * Constructs a new key/value expirable database storage object for a given
+   * collection name.
    *
-   * @var \Drupal\Core\KeyValueStore\DatabaseStorageExpirable[]
-   */
-  protected $storages = array();
-
-  /**
-   * The serialization class to use.
-   *
-   * @var \Drupal\Component\Serialization\SerializationInterface
-   */
-  protected $serializer;
-
-  /**
-   * The database connection.
-   *
-   * @var \Drupal\Core\Database\Connection
-   */
-  protected $connection;
-
-  /**
-   * Constructs this factory object.
-   *
-   * @param \Drupal\Component\Serialization\SerializationInterface $serializer
-   *   The serialization class to use.
+   * @param string $collection
+   *   The name of the collection holding key and value pairs.
    * @param \Drupal\Core\Database\Connection $connection
-   *   The Connection object containing the key-value tables.
-   */
-  function __construct(SerializationInterface $serializer, Connection $connection) {
-    $this->serializer = $serializer;
-    $this->connection = $connection;
-  }
-
-  /**
-   * {@inheritdoc}
+   *   The connection to run against.
+   * @return \Drupal\Core\KeyValueStore\DatabaseStorageExpirable
+   *   A key/value store implementation for the given $collection.
    */
   public function get($collection) {
-    if (!isset($this->storages[$collection])) {
-      $this->storages[$collection] = new DatabaseStorageExpirable($collection, $this->serializer, $this->connection);
-    }
-    return $this->storages[$collection];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function destruct() {
-    if (!empty($this->storages)) {
-      // Each instance does garbage collection for all collections, so we can
-      // optimize and only have to call the first, avoids multiple DELETE.
-      $storage = reset($this->storages);
-      $storage->destruct();
-    }
+    return new DatabaseStorageExpirable($collection, $this->connection);
   }
 }

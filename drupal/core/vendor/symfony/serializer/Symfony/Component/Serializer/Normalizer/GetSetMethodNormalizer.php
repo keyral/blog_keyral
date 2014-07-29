@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\Serializer\Normalizer;
 
-use Symfony\Component\Serializer\Exception\InvalidArgumentException;
 use Symfony\Component\Serializer\Exception\RuntimeException;
 
 /**
@@ -38,20 +37,17 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
 {
     protected $callbacks = array();
     protected $ignoredAttributes = array();
-    protected $camelizedAttributes = array();
 
     /**
-     * Set normalization callbacks.
+     * Set normalization callbacks
      *
-     * @param callable[] $callbacks help normalize the result
-     *
-     * @throws InvalidArgumentException if a non-callable callback is set
+     * @param array $callbacks help normalize the result
      */
     public function setCallbacks(array $callbacks)
     {
         foreach ($callbacks as $attribute => $callback) {
             if (!is_callable($callback)) {
-                throw new InvalidArgumentException(sprintf('The given callback for attribute "%s" is not callable.', $attribute));
+                throw new \InvalidArgumentException(sprintf('The given callback for attribute "%s" is not callable.', $attribute));
             }
         }
         $this->callbacks = $callbacks;
@@ -68,19 +64,9 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
     }
 
     /**
-     * Set attributes to be camelized on denormalize
-     *
-     * @param array $camelizedAttributes
-     */
-    public function setCamelizedAttributes(array $camelizedAttributes)
-    {
-        $this->camelizedAttributes = $camelizedAttributes;
-    }
-
-    /**
      * {@inheritdoc}
      */
-    public function normalize($object, $format = null, array $context = array())
+    public function normalize($object, $format = null)
     {
         $reflectionObject = new \ReflectionObject($object);
         $reflectionMethods = $reflectionObject->getMethods(\ReflectionMethod::IS_PUBLIC);
@@ -112,7 +98,7 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
     /**
      * {@inheritdoc}
      */
-    public function denormalize($data, $class, $format = null, array $context = array())
+    public function denormalize($data, $class, $format = null)
     {
         $reflectionClass = new \ReflectionClass($class);
         $constructor = $reflectionClass->getConstructor();
@@ -122,7 +108,7 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
 
             $params = array();
             foreach ($constructorParameters as $constructorParameter) {
-                $paramName = lcfirst($this->formatAttribute($constructorParameter->name));
+                $paramName = lcfirst($constructorParameter->name);
 
                 if (isset($data[$paramName])) {
                     $params[] = $data[$paramName];
@@ -143,35 +129,13 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
         }
 
         foreach ($data as $attribute => $value) {
-            $setter = 'set'.$this->formatAttribute($attribute);
-
+            $setter = 'set'.$attribute;
             if (method_exists($object, $setter)) {
                 $object->$setter($value);
             }
         }
 
         return $object;
-    }
-
-    /**
-     * Format attribute name to access parameters or methods
-     * As option, if attribute name is found on camelizedAttributes array
-     * returns attribute name in camelcase format
-     *
-     * @param string $attributeName
-     * @return string
-     */
-    protected function formatAttribute($attributeName)
-    {
-        if (in_array($attributeName, $this->camelizedAttributes)) {
-            return preg_replace_callback(
-                '/(^|_|\.)+(.)/', function ($match) {
-                    return ('.' === $match[1] ? '_' : '').strtoupper($match[2]);
-                }, $attributeName
-            );
-        }
-
-        return $attributeName;
     }
 
     /**
@@ -194,7 +158,6 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
      * Checks if the given class has any get{Property} method.
      *
      * @param string $class
-     *
      * @return Boolean
      */
     private function supports($class)
@@ -213,8 +176,7 @@ class GetSetMethodNormalizer extends SerializerAwareNormalizer implements Normal
     /**
      * Checks if a method's name is get.* and can be called without parameters.
      *
-     * @param \ReflectionMethod $method the method to check
-     *
+     * @param ReflectionMethod $method the method to check
      * @return Boolean whether the method is a getter.
      */
     private function isGetMethod(\ReflectionMethod $method)

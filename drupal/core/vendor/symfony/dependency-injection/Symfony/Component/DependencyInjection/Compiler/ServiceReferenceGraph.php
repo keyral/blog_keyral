@@ -23,17 +23,20 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
  */
 class ServiceReferenceGraph
 {
+    private $nodes;
+
     /**
-     * @var ServiceReferenceGraphNode[]
+     * Constructor.
      */
-    private $nodes = array();
+    public function __construct()
+    {
+        $this->nodes = array();
+    }
 
     /**
      * Checks if the graph has a specific node.
      *
      * @param string $id Id to check
-     *
-     * @return Boolean
      */
     public function hasNode($id)
     {
@@ -61,7 +64,7 @@ class ServiceReferenceGraph
     /**
      * Returns all nodes.
      *
-     * @return ServiceReferenceGraphNode[] An array of all ServiceReferenceGraphNode objects
+     * @return array An array of all ServiceReferenceGraphNode objects
      */
     public function getNodes()
     {

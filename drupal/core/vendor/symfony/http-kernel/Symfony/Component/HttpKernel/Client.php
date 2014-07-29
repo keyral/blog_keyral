@@ -11,15 +11,15 @@
 
 namespace Symfony\Component\HttpKernel;
 
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\BrowserKit\Client as BaseClient;
 use Symfony\Component\BrowserKit\Request as DomRequest;
 use Symfony\Component\BrowserKit\Response as DomResponse;
 use Symfony\Component\BrowserKit\Cookie as DomCookie;
 use Symfony\Component\BrowserKit\History;
 use Symfony\Component\BrowserKit\CookieJar;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\TerminableInterface;
 
 /**
  * Client simulates a browser and makes requests to a Kernel object.
@@ -42,31 +42,11 @@ class Client extends BaseClient
      */
     public function __construct(HttpKernelInterface $kernel, array $server = array(), History $history = null, CookieJar $cookieJar = null)
     {
-        // These class properties must be set before calling the parent constructor, as it may depend on it.
         $this->kernel = $kernel;
-        $this->followRedirects = false;
 
         parent::__construct($server, $history, $cookieJar);
-    }
 
-    /**
-     * {@inheritdoc}
-     *
-     * @return Request|null A Request instance
-     */
-    public function getRequest()
-    {
-        return parent::getRequest();
-    }
-
-    /**
-     * {@inheritdoc}
-     *
-     * @return Response|null A Response instance
-     */
-    public function getResponse()
-    {
-        return parent::getResponse();
+        $this->followRedirects = false;
     }
 
     /**
@@ -91,51 +71,35 @@ class Client extends BaseClient
      * Returns the script to execute when the request must be insulated.
      *
      * @param Request $request A Request instance
-     *
-     * @return string
      */
     protected function getScript($request)
     {
         $kernel = str_replace("'", "\\'", serialize($this->kernel));
         $request = str_replace("'", "\\'", serialize($request));
 
-        $r = new \ReflectionClass('\\Symfony\\Component\\ClassLoader\\ClassLoader');
+        $r = new \ReflectionClass('\\Symfony\\Component\\ClassLoader\\UniversalClassLoader');
         $requirePath = str_replace("'", "\\'", $r->getFileName());
+
         $symfonyPath = str_replace("'", "\\'", realpath(__DIR__.'/../../..'));
 
-        $code = <<<EOF
+        return <<<EOF
 <?php
 
 require_once '$requirePath';
 
-\$loader = new Symfony\Component\ClassLoader\ClassLoader();
-\$loader->addPrefix('Symfony', '$symfonyPath');
+\$loader = new Symfony\Component\ClassLoader\UniversalClassLoader();
+\$loader->registerNamespaces(array('Symfony' => '$symfonyPath'));
 \$loader->register();
 
 \$kernel = unserialize('$kernel');
-\$request = unserialize('$request');
-EOF;
-
-        return $code.$this->getHandleScript();
-    }
-
-    protected function getHandleScript()
-    {
-        return <<<'EOF'
-$response = $kernel->handle($request);
-
-if ($kernel instanceof Symfony\Component\HttpKernel\TerminableInterface) {
-    $kernel->terminate($request, $response);
-}
-
-echo serialize($response);
+echo serialize(\$kernel->handle(unserialize('$request')));
 EOF;
     }
 
     /**
      * Converts the BrowserKit request to a HttpKernel request.
      *
-     * @param DomRequest $request A DomRequest instance
+     * @param DomRequest $request A Request instance
      *
      * @return Request A Request instance
      */
@@ -202,7 +166,7 @@ EOF;
      *
      * @param Response $response A Response instance
      *
-     * @return DomResponse A DomResponse instance
+     * @return Response A Response instance
      */
     protected function filterResponse($response)
     {
@@ -215,11 +179,6 @@ EOF;
             $headers['Set-Cookie'] = $cookies;
         }
 
-        // this is needed to support StreamedResponse
-        ob_start();
-        $response->sendContent();
-        $content = ob_get_clean();
-
-        return new DomResponse($content, $response->getStatusCode(), $headers);
+        return new DomResponse($response->getContent(), $response->getStatusCode(), $headers);
     }
 }

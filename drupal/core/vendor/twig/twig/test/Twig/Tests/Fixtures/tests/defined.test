@@ -37,7 +37,7 @@ return array(
         'nullVar'      => null,
         'definedArray' => array(0),
     ),
-    'object' => new TwigTestFoo(),
+    'object' => new Foo(),
 );
 --EXPECT--
 ok
@@ -76,7 +76,7 @@ return array(
         'nullVar'      => null,
         'definedArray' => array(0),
     ),
-    'object' => new TwigTestFoo(),
+    'object' => new Foo(),
 );
 --CONFIG--
 return array('strict_variables' => false)

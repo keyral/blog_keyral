@@ -2,10 +2,10 @@
 
 /**
  * @file
- * Provide views data that isn't tied to any other module.
+ * Provide views data and handlers that aren't tied to any other module.
+ *
+ * @ingroup views_module_handlers
  */
-
-use Drupal\system\ActionConfigEntityInterface;
 
 /**
  * Implements hook_views_data().
@@ -13,7 +13,7 @@ use Drupal\system\ActionConfigEntityInterface;
 function views_views_data() {
   $data['views']['table']['group'] = t('Global');
   $data['views']['table']['join'] = array(
-  // #global is a special flag which allows a table to appear all the time.
+    // #global is a special flag which let's a table appear all the time.
   '#global' => array(),
   );
 
@@ -90,22 +90,6 @@ function views_views_data() {
     ),
   );
 
-  $data['views']['messages'] = array(
-    'title' => t('Messages'),
-    'help' => t('Displays messages in an area.'),
-    'area' => array(
-      'id' => 'messages',
-    ),
-  );
-
-  $data['views']['http_status_code'] = array(
-    'title' => t('Response status code'),
-    'help' => t('Alter the HTTP response status code used by this view, mostly helpful for empty results.'),
-    'area' => array(
-      'id' => 'http_status_code',
-    ),
-  );
-
   $data['views']['combine'] = array(
    'title' => t('Combine fields filter'),
     'help' => t('Combine two fields together and search by them.'),
@@ -114,45 +98,5 @@ function views_views_data() {
     ),
   );
 
-  $data['views']['dropbutton'] = array(
-    'title' => t('Dropbutton'),
-    'help' => t('Display fields in a dropbutton.'),
-    'field' => array(
-      'id' => 'dropbutton',
-    ),
-  );
-
-  // Registers an entity area handler per entity type.
-  foreach (\Drupal::entityManager()->getDefinitions() as $entity_type_id => $entity_type) {
-    // Excludes entity types, which cannot be rendered.
-    if ($entity_type->hasViewBuilderClass()) {
-      $label = $entity_type->getLabel();
-      $data['views']['entity_' . $entity_type_id] = array(
-        'title' => t('Rendered entity - @label', array('@label' => $label)),
-        'help' => t('Displays a rendered @label entity in an area.', array('@label' => $label)),
-        'area' => array(
-          'entity_type' => $entity_type_id,
-          'id' => 'entity',
-        ),
-      );
-    }
-  }
-
-  // Registers an action bulk form per entity.
-  foreach (\Drupal::entityManager()->getDefinitions() as $entity_type => $entity_info) {
-    $actions = array_filter(\Drupal::entityManager()->getStorage('action')->loadMultiple(), function (ActionConfigEntityInterface $action) use ($entity_type) {
-      return $action->getType() == $entity_type;
-    });
-    if (empty($actions)) {
-      continue;
-    }
-    $data[$entity_info->getBaseTable()][$entity_type . '_bulk_form'] = array(
-      'title' => t('Bulk update'),
-      'help' => t('Allows users to apply an action to one or more items.'),
-      'field' => array(
-        'id' => 'bulk_form',
-      ),
-    );
-  }
   return $data;
 }

@@ -17,11 +17,12 @@
  * source code of the template). If you don't want to see your cache grows out of
  * control, you need to take care of clearing the old cache file by yourself.
  *
- * @author Fabien Potencier <fabien@symfony.com>
+ * @package    twig
+ * @author     Fabien Potencier <fabien@symfony.com>
  */
-class Twig_Loader_Array implements Twig_LoaderInterface, Twig_ExistsLoaderInterface
+class Twig_Loader_Array implements Twig_LoaderInterface
 {
-    protected $templates = array();
+    protected $templates;
 
     /**
      * Constructor.
@@ -32,7 +33,10 @@ class Twig_Loader_Array implements Twig_LoaderInterface, Twig_ExistsLoaderInterf
      */
     public function __construct(array $templates)
     {
-        $this->templates = $templates;
+        $this->templates = array();
+        foreach ($templates as $name => $template) {
+            $this->templates[$name] = $template;
+        }
     }
 
     /**
@@ -47,7 +51,11 @@ class Twig_Loader_Array implements Twig_LoaderInterface, Twig_ExistsLoaderInterf
     }
 
     /**
-     * {@inheritdoc}
+     * Gets the source code of a template, given its name.
+     *
+     * @param string $name The name of the template to load
+     *
+     * @return string The template source code
      */
     public function getSource($name)
     {
@@ -60,15 +68,11 @@ class Twig_Loader_Array implements Twig_LoaderInterface, Twig_ExistsLoaderInterf
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function exists($name)
-    {
-        return isset($this->templates[(string) $name]);
-    }
-
-    /**
-     * {@inheritdoc}
+     * Gets the cache key to use for the cache for a given template name.
+     *
+     * @param string $name The name of the template to load
+     *
+     * @return string The cache key
      */
     public function getCacheKey($name)
     {
@@ -81,7 +85,10 @@ class Twig_Loader_Array implements Twig_LoaderInterface, Twig_ExistsLoaderInterf
     }
 
     /**
-     * {@inheritdoc}
+     * Returns true if the template is still fresh.
+     *
+     * @param string    $name The template name
+     * @param timestamp $time The last modification time of the cached template
      */
     public function isFresh($name, $time)
     {

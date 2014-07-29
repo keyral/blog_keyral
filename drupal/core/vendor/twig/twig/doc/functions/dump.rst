@@ -60,10 +60,5 @@ dumped:
 
     Internally, Twig uses the PHP `var_dump`_ function.
 
-Arguments
----------
-
-* ``context``: The context to dump
-
 .. _`XDebug`:   http://xdebug.org/docs/display
 .. _`var_dump`: http://php.net/var_dump

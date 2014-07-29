@@ -19,8 +19,7 @@ $fid = db_insert('file_managed')
     'filename' => 'faked_image.png',
     'filesize' => 1000,
     'filemime' => 'image/png',
-    'created' => 1353542634,
-    'changed' => 1353542634,
+    'timestamp' => 1353542634,
   ))
   ->execute();
 

@@ -44,7 +44,7 @@ $output = <<<ENDOFHEADER
 
 ENDOFHEADER;
 
-foreach (\Drupal::moduleHandler()->getModuleList() as $module => $filename) {
+foreach (module_list() as $module) {
   $output .= " *  - $module\n";
 }
 $output .= " */\n\n";

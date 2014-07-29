@@ -15,6 +15,10 @@ use Drupal\Core\Database\TransactionCommitFailedException;
 use Drupal\Core\Database\Driver\sqlite\Statement;
 use Drupal\Core\Database\Connection as DatabaseConnection;
 
+use PDO;
+use Exception;
+use SplFileInfo;
+
 /**
  * Specific SQLite implementation of DatabaseConnection.
  */
@@ -62,12 +66,7 @@ class Connection extends DatabaseConnection {
    */
   var $tableDropped = FALSE;
 
-  /**
-   * Constructs a \Drupal\Core\Database\Driver\sqlite\Connection object.
-   */
-  public function __construct(\PDO $connection, array $connection_options) {
-    parent::__construct($connection, $connection_options);
-
+  public function __construct(array $connection_options = array()) {
     // We don't need a specific PDOStatement class here, we simulate it below.
     $this->statementClass = NULL;
 
@@ -76,9 +75,19 @@ class Connection extends DatabaseConnection {
 
     $this->connectionOptions = $connection_options;
 
+    // Allow PDO options to be overridden.
+    $connection_options += array(
+      'pdo' => array(),
+    );
+    $connection_options['pdo'] += array(
+      // Convert numeric values to strings when fetching.
+      PDO::ATTR_STRINGIFY_FETCHES => TRUE,
+    );
+    parent::__construct('sqlite:' . $connection_options['database'], '', '', $connection_options['pdo']);
+
     // Attach one database for each registered prefix.
     $prefixes = $this->prefixes;
-    foreach ($prefixes as &$prefix) {
+    foreach ($prefixes as $table => &$prefix) {
       // Empty prefix means query the main database -- no need to attach anything.
       if (!empty($prefix)) {
         // Only attach the database once.
@@ -98,43 +107,23 @@ class Connection extends DatabaseConnection {
     // Detect support for SAVEPOINT.
     $version = $this->query('SELECT sqlite_version()')->fetchField();
     $this->savepointSupport = (version_compare($version, '3.6.8') >= 0);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function open(array &$connection_options = array()) {
-    // Allow PDO options to be overridden.
-    $connection_options += array(
-      'pdo' => array(),
-    );
-    $connection_options['pdo'] += array(
-      \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-      // Convert numeric values to strings when fetching.
-      \PDO::ATTR_STRINGIFY_FETCHES => TRUE,
-    );
-    $pdo = new \PDO('sqlite:' . $connection_options['database'], '', '', $connection_options['pdo']);
 
     // Create functions needed by SQLite.
-    $pdo->sqliteCreateFunction('if', array(__CLASS__, 'sqlFunctionIf'));
-    $pdo->sqliteCreateFunction('greatest', array(__CLASS__, 'sqlFunctionGreatest'));
-    $pdo->sqliteCreateFunction('pow', 'pow', 2);
-    $pdo->sqliteCreateFunction('length', 'strlen', 1);
-    $pdo->sqliteCreateFunction('md5', 'md5', 1);
-    $pdo->sqliteCreateFunction('concat', array(__CLASS__, 'sqlFunctionConcat'));
-    $pdo->sqliteCreateFunction('substring', array(__CLASS__, 'sqlFunctionSubstring'), 3);
-    $pdo->sqliteCreateFunction('substring_index', array(__CLASS__, 'sqlFunctionSubstringIndex'), 3);
-    $pdo->sqliteCreateFunction('rand', array(__CLASS__, 'sqlFunctionRand'));
-    $pdo->sqliteCreateFunction('regexp', array(__CLASS__, 'sqlFunctionRegexp'));
+    $this->sqliteCreateFunction('if', array($this, 'sqlFunctionIf'));
+    $this->sqliteCreateFunction('greatest', array($this, 'sqlFunctionGreatest'));
+    $this->sqliteCreateFunction('pow', 'pow', 2);
+    $this->sqliteCreateFunction('length', 'strlen', 1);
+    $this->sqliteCreateFunction('md5', 'md5', 1);
+    $this->sqliteCreateFunction('concat', array($this, 'sqlFunctionConcat'));
+    $this->sqliteCreateFunction('substring', array($this, 'sqlFunctionSubstring'), 3);
+    $this->sqliteCreateFunction('substring_index', array($this, 'sqlFunctionSubstringIndex'), 3);
+    $this->sqliteCreateFunction('rand', array($this, 'sqlFunctionRand'));
 
     // Execute sqlite init_commands.
     if (isset($connection_options['init_commands'])) {
-      $pdo->exec(implode('; ', $connection_options['init_commands']));
+      $this->exec(implode('; ', $connection_options['init_commands']));
     }
-
-    return $pdo;
   }
-
 
   /**
    * Destructor for the SQLite connection.
@@ -158,7 +147,7 @@ class Connection extends DatabaseConnection {
             unlink($this->connectionOptions['database'] . '-' . $prefix);
           }
         }
-        catch (\Exception $e) {
+        catch (Exception $e) {
           // Ignore the exception and continue. There is nothing we can do here
           // to report the error or fail safe.
         }
@@ -169,16 +158,16 @@ class Connection extends DatabaseConnection {
   /**
    * SQLite compatibility implementation for the IF() SQL function.
    */
-  public static function sqlFunctionIf($condition, $expr1, $expr2 = NULL) {
+  public function sqlFunctionIf($condition, $expr1, $expr2 = NULL) {
     return $condition ? $expr1 : $expr2;
   }
 
   /**
    * SQLite compatibility implementation for the GREATEST() SQL function.
    */
-  public static function sqlFunctionGreatest() {
+  public function sqlFunctionGreatest() {
     $args = func_get_args();
-    foreach ($args as $v) {
+    foreach ($args as $k => $v) {
       if (!isset($v)) {
         unset($args);
       }
@@ -194,7 +183,7 @@ class Connection extends DatabaseConnection {
   /**
    * SQLite compatibility implementation for the CONCAT() SQL function.
    */
-  public static function sqlFunctionConcat() {
+  public function sqlFunctionConcat() {
     $args = func_get_args();
     return implode('', $args);
   }
@@ -202,14 +191,14 @@ class Connection extends DatabaseConnection {
   /**
    * SQLite compatibility implementation for the SUBSTRING() SQL function.
    */
-  public static function sqlFunctionSubstring($string, $from, $length) {
+  public function sqlFunctionSubstring($string, $from, $length) {
     return substr($string, $from - 1, $length);
   }
 
   /**
    * SQLite compatibility implementation for the SUBSTRING_INDEX() SQL function.
    */
-  public static function sqlFunctionSubstringIndex($string, $delimiter, $count) {
+  public function sqlFunctionSubstringIndex($string, $delimiter, $count) {
     // If string is empty, simply return an empty string.
     if (empty($string)) {
       return '';
@@ -227,20 +216,11 @@ class Connection extends DatabaseConnection {
   /**
    * SQLite compatibility implementation for the RAND() SQL function.
    */
-  public static function sqlFunctionRand($seed = NULL) {
+  public function sqlFunctionRand($seed = NULL) {
     if (isset($seed)) {
       mt_srand($seed);
     }
     return mt_rand() / mt_getrandmax();
-  }
-
-  /**
-   * SQLite compatibility implementation for the REGEXP SQL operator.
-   *
-   * The REGEXP operator is a special syntax for the regexp() user function.
-   */
-  public static function sqlFunctionRegexp($string, $pattern) {
-    return preg_match('#' . str_replace('#', '\#', $pattern) . '#i', $string);
   }
 
   /**
@@ -250,8 +230,24 @@ class Connection extends DatabaseConnection {
    * a Statement object, that will create a PDOStatement
    * using the semi-private PDOPrepare() method below.
    */
-  public function prepare($statement, array $driver_options = array()) {
-    return new Statement($this->connection, $this, $statement, $driver_options);
+  public function prepare($query, $options = array()) {
+    return new Statement($this, $query, $options);
+  }
+
+  /**
+   * NEVER CALL THIS FUNCTION: YOU MIGHT DEADLOCK YOUR PHP PROCESS.
+   *
+   * This is a wrapper around the parent PDO::prepare method. However, as
+   * the PDO SQLite driver only closes SELECT statements when the PDOStatement
+   * destructor is called and SQLite does not allow data change (INSERT,
+   * UPDATE etc) on a table which has open SELECT statements, you should never
+   * call this function and keep a PDOStatement object alive as that can lead
+   * to a deadlock. This really, really should be private, but as Statement
+   * needs to call it, we have no other choice but to expose this function to
+   * the world.
+   */
+  public function PDOPrepare($query, array $options = array()) {
+    return parent::prepare($query, $options);
   }
 
   public function queryRange($query, $from, $count, array $args = array(), array $options = array()) {
@@ -266,7 +262,7 @@ class Connection extends DatabaseConnection {
     $prefixes[$tablename] = '';
     $this->setPrefix($prefixes);
 
-    $this->query('CREATE TEMPORARY TABLE ' . $tablename . ' AS ' . $query, $args, $options);
+    $this->query(preg_replace('/^SELECT/i', 'CREATE TEMPORARY TABLE ' . $tablename . ' AS SELECT', $query), $args, $options);
     return $tablename;
   }
 
@@ -284,11 +280,11 @@ class Connection extends DatabaseConnection {
    * @param string $database
    *   The name of the database to create.
    *
-   * @throws \Drupal\Core\Database\DatabaseNotFoundException
+   * @throws DatabaseNotFoundException
    */
   public function createDatabase($database) {
     // Verify the database is writable.
-    $db_directory = new \SplFileInfo(dirname($database));
+    $db_directory = new SplFileInfo(dirname($database));
     if (!$db_directory->isDir() && !drupal_mkdir($db_directory->getPathName(), 0755, TRUE)) {
       throw new DatabaseNotFoundException('Unable to create database directory ' . $db_directory->getPathName());
     }
@@ -303,20 +299,22 @@ class Connection extends DatabaseConnection {
     return isset($specials[$operator]) ? $specials[$operator] : NULL;
   }
 
+  public function prepareQuery($query) {
+    return $this->prepare($this->prefixTables($query));
+  }
+
   public function nextId($existing_id = 0) {
-    $this->startTransaction();
+    $transaction = $this->startTransaction();
     // We can safely use literal queries here instead of the slower query
     // builder because if a given database breaks here then it can simply
     // override nextId. However, this is unlikely as we deal with short strings
     // and integers and no known databases require special handling for those
     // simple cases. If another transaction wants to write the same row, it will
-    // wait until this transaction commits. Also, the return value needs to be
-    // set to RETURN_AFFECTED as if it were a real update() query otherwise it
-    // is not possible to get the row count properly.
-    $affected = $this->query('UPDATE {sequences} SET value = GREATEST(value, :existing_id) + 1', array(
+    // wait until this transaction commits.
+    $stmt = $this->query('UPDATE {sequences} SET value = GREATEST(value, :existing_id) + 1', array(
       ':existing_id' => $existing_id,
-    ), array('return' => Database::RETURN_AFFECTED));
-    if (!$affected) {
+    ));
+    if (!$stmt->rowCount()) {
       $this->query('INSERT INTO {sequences} (value) VALUES (:existing_id + 1)', array(
         ':existing_id' => $existing_id,
       ));
@@ -356,7 +354,7 @@ class Connection extends DatabaseConnection {
       }
     }
     if ($this->supportsTransactions()) {
-      $this->connection->rollBack();
+      PDO::rollBack();
     }
   }
 
@@ -371,7 +369,7 @@ class Connection extends DatabaseConnection {
       throw new TransactionNameNonUniqueException($name . " is already in use.");
     }
     if (!$this->inTransaction()) {
-      $this->connection->beginTransaction();
+      PDO::beginTransaction();
     }
     $this->transactionLayers[$name] = $name;
   }
@@ -396,9 +394,9 @@ class Connection extends DatabaseConnection {
         // If there was any rollback() we should roll back whole transaction.
         if ($this->willRollback) {
           $this->willRollback = FALSE;
-          $this->connection->rollBack();
+          PDO::rollBack();
         }
-        elseif (!$this->connection->commit()) {
+        elseif (!PDO::commit()) {
           throw new TransactionCommitFailedException();
         }
       }

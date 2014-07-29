@@ -20,18 +20,16 @@ use Symfony\Component\Serializer\Normalizer\CustomNormalizer;
 
 class XmlEncoderTest extends \PHPUnit_Framework_TestCase
 {
-    private $encoder;
-
     protected function setUp()
     {
-        $this->encoder = new XmlEncoder();
+        $this->encoder = new XmlEncoder;
         $serializer = new Serializer(array(new CustomNormalizer()), array('xml' => new XmlEncoder()));
         $this->encoder->setSerializer($serializer);
     }
 
     public function testEncodeScalar()
     {
-        $obj = new ScalarDummy();
+        $obj = new ScalarDummy;
         $obj->xmlFoo = "foo";
 
         $expected = '<?xml version="1.0"?>'."\n".
@@ -42,7 +40,7 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
 
     public function testSetRootNodeName()
     {
-        $obj = new ScalarDummy();
+        $obj = new ScalarDummy;
         $obj->xmlFoo = "foo";
 
         $this->encoder->setRootNodeName('test');
@@ -53,7 +51,7 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException        \Symfony\Component\Serializer\Exception\UnexpectedValueException
+     * @expectedException        UnexpectedValueException
      * @expectedExceptionMessage Document types are not allowed.
      */
     public function testDocTypeIsNotAllowed()
@@ -63,7 +61,7 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
 
     public function testAttributes()
     {
-        $obj = new ScalarDummy();
+        $obj = new ScalarDummy;
         $obj->xmlFoo = array(
             'foo-bar' => array(
                 '@id' => 1,
@@ -92,7 +90,7 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
 
     public function testElementNameValid()
     {
-        $obj = new ScalarDummy();
+        $obj = new ScalarDummy;
         $obj->xmlFoo = array(
             'foo-bar' => 'a',
             'foo_bar' => 'a',
@@ -118,23 +116,6 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
             '<response><person><firstname>Peter</firstname></person></response>'."\n";
 
         $this->assertEquals($expected, $this->encoder->encode($array, 'xml'));
-    }
-
-    public function testEncodeXmlAttributes()
-    {
-        $xml = simplexml_load_string('<firstname>Peter</firstname>');
-        $array = array('person' => $xml);
-
-        $expected = '<?xml version="1.1" encoding="utf-8" standalone="yes"?>'."\n".
-            '<response><person><firstname>Peter</firstname></person></response>'."\n";
-
-        $context = array(
-            'xml_version' => '1.1',
-            'xml_encoding' => 'utf-8',
-            'xml_standalone' => true,
-        );
-
-        $this->assertSame($expected, $this->encoder->encode($array, 'xml', $context));
     }
 
     public function testEncodeScalarRootAttributes()
@@ -201,23 +182,6 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
         $obj = $this->getObject();
 
         $this->assertEquals($source, $this->encoder->encode($obj, 'xml'));
-    }
-
-    public function testEncodeSerializerXmlRootNodeNameOption()
-    {
-        $options = array('xml_root_node_name' => 'test');
-        $this->encoder = new XmlEncoder();
-        $serializer = new Serializer(array(), array('xml' => new XmlEncoder()));
-        $this->encoder->setSerializer($serializer);
-
-        $array = array(
-            'person' => array('@gender' => 'M', '#' => 'Peter'),
-        );
-
-        $expected = '<?xml version="1.0"?>'."\n".
-            '<test><person gender="M">Peter</person></test>'."\n";
-
-        $this->assertEquals($expected, $serializer->serialize($array, 'xml', $options));
     }
 
     public function testDecode()
@@ -287,47 +251,6 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $this->encoder->decode($source, 'xml'));
     }
 
-    public function testDecodeWithoutItemHash()
-    {
-        $obj = new ScalarDummy();
-        $obj->xmlFoo = array(
-            'foo-bar' => array(
-                '@key' => "value",
-                'item' => array("@key" => 'key', "key-val" => 'val')
-            ),
-            'Foo' => array(
-                'Bar' => "Test",
-                '@Type' => 'test'
-            ),
-            'föo_bär' => 'a',
-            "Bar" => array(1,2,3),
-            'a' => 'b',
-        );
-        $expected = array(
-            'foo-bar' => array(
-                '@key' => "value",
-                'key' => array('@key' => 'key', "key-val" => 'val')
-            ),
-            'Foo' => array(
-                'Bar' => "Test",
-                '@Type' => 'test'
-            ),
-            'föo_bär' => 'a',
-            "Bar" => array(1,2,3),
-            'a' => 'b',
-        );
-        $xml = $this->encoder->encode($obj, 'xml');
-        $this->assertEquals($expected, $this->encoder->decode($xml, 'xml'));
-    }
-
-    /**
-     * @expectedException \Symfony\Component\Serializer\Exception\UnexpectedValueException
-     */
-    public function testDecodeInvalidXml()
-    {
-        $this->encoder->decode('<?xml version="1.0"?><invalid><xml>', 'xml');
-    }
-
     public function testPreventsComplexExternalEntities()
     {
         $oldCwd = getcwd();
@@ -362,7 +285,7 @@ class XmlEncoderTest extends \PHPUnit_Framework_TestCase
 
     protected function getObject()
     {
-        $obj = new Dummy();
+        $obj = new Dummy;
         $obj->foo = 'foo';
         $obj->bar = array('a', 'b');
         $obj->baz = array('key' => 'val', 'key2' => 'val', 'A B' => 'bar', 'item' => array(array('title' => 'title1'), array('title' => 'title2')), 'Barry' => array('FooBar' => array('Baz' => 'Ed', '@id' => 1)));

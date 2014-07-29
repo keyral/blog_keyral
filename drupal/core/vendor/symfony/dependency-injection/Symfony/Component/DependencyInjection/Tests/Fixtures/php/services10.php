@@ -6,6 +6,8 @@ use Symfony\Component\DependencyInjection\Exception\InactiveScopeException;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\DependencyInjection\ParameterBag\FrozenParameterBag;
 
 /**
@@ -31,11 +33,6 @@ class ProjectServiceContainer extends Container
 
         $this->scopes = array();
         $this->scopeChildren = array();
-        $this->methodMap = array(
-            'test' => 'getTestService',
-        );
-
-        $this->aliases = array();
     }
 
     /**
@@ -58,7 +55,7 @@ class ProjectServiceContainer extends Container
     {
         $name = strtolower($name);
 
-        if (!(isset($this->parameters[$name]) || array_key_exists($name, $this->parameters))) {
+        if (!array_key_exists($name, $this->parameters)) {
             throw new InvalidArgumentException(sprintf('The parameter "%s" must be defined.', $name));
         }
 
@@ -70,9 +67,7 @@ class ProjectServiceContainer extends Container
      */
     public function hasParameter($name)
     {
-        $name = strtolower($name);
-
-        return isset($this->parameters[$name]) || array_key_exists($name, $this->parameters);
+        return array_key_exists(strtolower($name), $this->parameters);
     }
 
     /**

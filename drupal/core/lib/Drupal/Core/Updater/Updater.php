@@ -42,10 +42,10 @@ class Updater {
    * @param string $source
    *   Directory of a Drupal project.
    *
-   * @return \Drupal\Core\Updater\Updater
+   * @return Drupal\Core\Updater\Updater
    *   A new Drupal\Core\Updater\Updater object.
    *
-   * @throws \Drupal\Core\Updater\UpdaterException
+   * @throws Drupal\Core\Updater\UpdaterException
    */
   public static function factory($source) {
     if (is_dir($source)) {
@@ -66,7 +66,7 @@ class Updater {
    * @return string
    *   The class name which can work with this project type.
    *
-   * @throws \Drupal\Core\Updater\UpdaterException
+   * @throws Drupal\Core\Updater\UpdaterException
    */
   public static function getUpdaterFromDirectory($directory) {
     // Gets a list of possible implementing classes.
@@ -94,7 +94,7 @@ class Updater {
    *   Path to the info file.
    */
   public static function findInfoFile($directory) {
-    $info_files = file_scan_directory($directory, '/.*\.info.yml$/');
+    $info_files = file_scan_directory($directory, '/.*\.info$/');
     if (!$info_files) {
       return FALSE;
     }
@@ -133,13 +133,16 @@ class Updater {
    * @return string
    *   The title of the project.
    *
-   * @throws \Drupal\Core\Updater\UpdaterException
+   * @throws Drupal\Core\Updater\UpdaterException
    */
   public static function getProjectTitle($directory) {
     $info_file = self::findInfoFile($directory);
-    $info = \Drupal::service('info_parser')->parse($info_file);
+    $info = drupal_parse_info_file($info_file);
     if (empty($info)) {
       throw new UpdaterException(t('Unable to parse info file: %info_file.', array('%info_file' => $info_file)));
+    }
+    if (empty($info['name'])) {
+      throw new UpdaterException(t("The info file (%info_file) does not define a 'name' attribute.", array('%info_file' => $info_file)));
     }
     return $info['name'];
   }
@@ -165,7 +168,7 @@ class Updater {
   /**
    * Updates a Drupal project and returns a list of next actions.
    *
-   * @param \Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
+   * @param Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
    *   Object that is a child of FileTransfer. Used for moving files
    *   to the server.
    * @param array $overrides
@@ -174,8 +177,8 @@ class Updater {
    * @return array
    *   An array of links which the user may need to complete the update
    *
-   * @throws \Drupal\Core\Updater\UpdaterException
-   * @throws \Drupal\Core\Updater\UpdaterFileTransferException
+   * @throws Drupal\Core\Updater\UpdaterException
+   * @throws Drupal\Core\Updater\UpdaterFileTransferException
    */
   public function update(&$filetransfer, $overrides = array()) {
     try {
@@ -224,7 +227,7 @@ class Updater {
   /**
    * Installs a Drupal project, returns a list of next actions.
    *
-   * @param \Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
+   * @param Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
    *   Object that is a child of FileTransfer.
    * @param array $overrides
    *   An array of settings to override defaults; see self::getInstallArgs().
@@ -232,7 +235,7 @@ class Updater {
    * @return array
    *   An array of links which the user may need to complete the install.
    *
-   * @throws \Drupal\Core\Updater\UpdaterFileTransferException
+   * @throws Drupal\Core\Updater\UpdaterFileTransferException
    */
   public function install(&$filetransfer, $overrides = array()) {
     try {
@@ -262,12 +265,12 @@ class Updater {
   /**
    * Makes sure the installation parent directory exists and is writable.
    *
-   * @param \Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
+   * @param Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
    *   Object which is a child of FileTransfer.
    * @param string $directory
    *   The installation directory to prepare.
    *
-   * @throws \Drupal\Core\Updater\UpdaterException
+   * @throws Drupal\Core\Updater\UpdaterException
    */
   public function prepareInstallDirectory(&$filetransfer, $directory) {
     // Make the parent dir writable if need be and create the dir.
@@ -307,7 +310,7 @@ class Updater {
   /**
    * Ensures that a given directory is world readable.
    *
-   * @param \Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
+   * @param Drupal\Core\FileTransfer\FileTransferInterface $filetransfer
    *   Object which is a child of FileTransfer.
    * @param string $path
    *   The file path to make world readable.

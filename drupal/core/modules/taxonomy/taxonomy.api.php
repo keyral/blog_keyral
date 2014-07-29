@@ -13,38 +13,20 @@ use Drupal\Core\Entity\EntityInterface;
  */
 
 /**
- * Act on a newly created vocabulary.
- *
- * This hook runs after a new vocabulary object has just been instantiated. It
- * can be used to set initial values, e.g. to provide defaults.
- *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
- *   The vocabulary object.
- */
-function hook_taxonomy_vocabulary_create(\Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
-  if (!isset($vocabulary->foo)) {
-    $vocabulary->foo = NULL;
-  }
-}
-
-/**
  * Act on taxonomy vocabularies when loaded.
  *
  * Modules implementing this hook can act on the vocabulary objects before they
- * are returned by entity_load_multiple().
+ * are returned by taxonomy_vocabulary_load_multiple().
  *
  * @param array $vocabularies
  *   An array of taxonomy vocabulary entities.
  */
 function hook_taxonomy_vocabulary_load(array $vocabularies) {
-  $result = db_select('mytable', 'm')
-    ->fields('m', array('vid', 'foo'))
-    ->condition('m.vid', array_keys($vocabularies), 'IN')
-    ->execute();
-  foreach ($result as $record) {
-    $vocabularies[$record->vid]->foo = $record->foo;
+  foreach ($vocabularies as $vocabulary) {
+    $vocabulary->synonyms = variable_get('taxonomy_' . $vocabulary->vid . '_synonyms', FALSE);
   }
 }
+
 
 /**
  * Act on taxonomy vocabularies before they are saved.
@@ -52,10 +34,10 @@ function hook_taxonomy_vocabulary_load(array $vocabularies) {
  * Modules implementing this hook can act on the vocabulary object before it is
  * inserted or updated.
  *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
+ * @param Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary
  *   A taxonomy vocabulary entity.
  */
-function hook_taxonomy_vocabulary_presave(Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
+function hook_taxonomy_vocabulary_presave(Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary) {
   $vocabulary->foo = 'bar';
 }
 
@@ -65,12 +47,12 @@ function hook_taxonomy_vocabulary_presave(Drupal\taxonomy\Entity\Vocabulary $voc
  * Modules implementing this hook can act on the vocabulary object when saved
  * to the database.
  *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
+ * @param Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary
  *   A taxonomy vocabulary entity.
  */
-function hook_taxonomy_vocabulary_insert(Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
-  if ($vocabulary->id() == 'my_vocabulary') {
-    $vocabulary->weight = 100;
+function hook_taxonomy_vocabulary_insert(Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary) {
+  if ($vocabulary->synonyms) {
+    variable_set('taxonomy_' . $vocabulary->vid . '_synonyms', TRUE);
   }
 }
 
@@ -79,62 +61,51 @@ function hook_taxonomy_vocabulary_insert(Drupal\taxonomy\Entity\Vocabulary $voca
  *
  * Modules implementing this hook can act on the vocabulary object when updated.
  *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
+ * @param Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary
  *   A taxonomy vocabulary entity.
  */
-function hook_taxonomy_vocabulary_update(Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
-  db_update('mytable')
-    ->fields(array('foo' => $vocabulary->foo))
-    ->condition('vid', $vocabulary->id())
-    ->execute();
+function hook_taxonomy_vocabulary_update(Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary) {
+  $status = $vocabulary->synonyms ? TRUE : FALSE;
+  if ($vocabulary->synonyms) {
+    variable_set('taxonomy_' . $vocabulary->vid . '_synonyms', $status);
+  }
 }
 
 /**
  * Act before taxonomy vocabulary deletion.
  *
- * This hook is invoked before entity_bundle_delete() is called and before
- * the vocabulary is actually removed.
+ * This hook is invoked from taxonomy_vocabulary_delete() before
+ * field_attach_delete_bundle() is called and before the vocabulary is actually
+ * removed from the database.
  *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
+ * @param Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary
  *   The taxonomy vocabulary entity that is about to be deleted.
  *
  * @see hook_taxonomy_vocabulary_delete()
+ * @see taxonomy_vocabulary_delete()
  */
-function hook_taxonomy_vocabulary_predelete(Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
-  db_delete('mytable_index')
-    ->condition('vid', $vocabulary->id())
-    ->execute();
+function hook_taxonomy_vocabulary_predelete(Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary) {
+  if (variable_get('taxonomy_' . $vocabulary->vid . '_synonyms', FALSE)) {
+    variable_del('taxonomy_' . $vocabulary->vid . '_synonyms');
+  }
 }
 
 /**
  * Respond to taxonomy vocabulary deletion.
  *
- * This hook is invoked after entity_bundle_delete() has been called and after
- * the vocabulary has been removed.
+ * This hook is invoked from taxonomy_vocabulary_delete() after
+ * field_attach_delete_bundle() has been called and after the vocabulary has
+ * been removed from the database.
  *
- * @param \Drupal\taxonomy\Entity\Vocabulary $vocabulary
+ * @param Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary
  *   The taxonomy vocabulary entity that has been deleted.
  *
  * @see hook_taxonomy_vocabulary_predelete()
+ * @see taxonomy_vocabulary_delete()
  */
-function hook_taxonomy_vocabulary_delete(Drupal\taxonomy\Entity\Vocabulary $vocabulary) {
-  db_delete('mytable')
-    ->condition('vid', $vocabulary->id())
-    ->execute();
-}
-
-/**
- * Act on a newly created term.
- *
- * This hook runs after a new term object has just been instantiated. It can be
- * used to set initial values, e.g. to provide defaults.
- *
- * @param \Drupal\taxonomy\Entity\Term $term
- *   The term object.
- */
-function hook_taxonomy_term_create(\Drupal\taxonomy\Entity\Term $term) {
-  if (!isset($term->foo)) {
-    $term->foo = 'some_initial_value';
+function hook_taxonomy_vocabulary_delete(Drupal\taxonomy\Plugin\Core\Entity\Vocabulary $vocabulary) {
+  if (variable_get('taxonomy_' . $vocabulary->vid . '_synonyms', FALSE)) {
+    variable_del('taxonomy_' . $vocabulary->vid . '_synonyms');
   }
 }
 
@@ -142,7 +113,7 @@ function hook_taxonomy_term_create(\Drupal\taxonomy\Entity\Term $term) {
  * Act on taxonomy terms when loaded.
  *
  * Modules implementing this hook can act on the term objects returned by
- * entity_load_multiple().
+ * taxonomy_term_load_multiple().
  *
  * For performance reasons, information to be added to term objects should be
  * loaded in a single query for all terms where possible.
@@ -155,10 +126,7 @@ function hook_taxonomy_term_create(\Drupal\taxonomy\Entity\Term $term) {
  *   An array of taxonomy term entities, indexed by tid.
  */
 function hook_taxonomy_term_load(array $terms) {
-  $result = db_select('mytable', 'm')
-    ->fields('m', array('tid', 'foo'))
-    ->condition('m.tid', array_keys($terms), 'IN')
-    ->execute();
+  $result = db_query('SELECT tid, foo FROM {mytable} WHERE tid IN (:tids)', array(':tids' => array_keys($terms)));
   foreach ($result as $record) {
     $terms[$record->tid]->foo = $record->foo;
   }
@@ -170,7 +138,7 @@ function hook_taxonomy_term_load(array $terms) {
  * Modules implementing this hook can act on the term object before it is
  * inserted or updated.
  *
- * @param \Drupal\taxonomy\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   A taxonomy term entity.
  */
 function hook_taxonomy_term_presave(Drupal\taxonomy\Term $term) {
@@ -183,16 +151,22 @@ function hook_taxonomy_term_presave(Drupal\taxonomy\Term $term) {
  * Modules implementing this hook can act on the term object when saved to
  * the database.
  *
- * @param \Drupal\taxonomy\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   A taxonomy term entity.
  */
 function hook_taxonomy_term_insert(Drupal\taxonomy\Term $term) {
-  db_insert('mytable')
-    ->fields(array(
-      'tid' => $term->id(),
-      'foo' => $term->foo,
-    ))
-    ->execute();
+  if (!empty($term->synonyms)) {
+    foreach (explode ("\n", str_replace("\r", '', $term->synonyms)) as $synonym) {
+      if ($synonym) {
+        db_insert('taxonomy_term_synonym')
+        ->fields(array(
+          'tid' => $term->tid,
+          'name' => rtrim($synonym),
+        ))
+        ->execute();
+      }
+    }
+  }
 }
 
 /**
@@ -200,59 +174,65 @@ function hook_taxonomy_term_insert(Drupal\taxonomy\Term $term) {
  *
  * Modules implementing this hook can act on the term object when updated.
  *
- * @param \Drupal\taxonomy\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   A taxonomy term entity.
  */
 function hook_taxonomy_term_update(Drupal\taxonomy\Term $term) {
-  db_update('mytable')
-    ->fields(array('foo' => $term->foo))
-    ->condition('tid', $term->id())
-    ->execute();
+  hook_taxonomy_term_delete($term);
+  if (!empty($term->synonyms)) {
+    foreach (explode ("\n", str_replace("\r", '', $term->synonyms)) as $synonym) {
+      if ($synonym) {
+        db_insert('taxonomy_term_synonym')
+        ->fields(array(
+          'tid' => $term->tid,
+          'name' => rtrim($synonym),
+        ))
+        ->execute();
+      }
+    }
+  }
 }
 
 /**
  * Act before taxonomy term deletion.
  *
- * This hook is invoked from taxonomy term deletion before field values are
- * deleted and before the term is actually removed from the database.
+ * This hook is invoked from taxonomy_term_delete() before
+ * field_attach_delete() is called and before the term is actually removed from
+ * the database.
  *
- * @param \Drupal\taxonomy\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   The taxonomy term entity that is about to be deleted.
+ *
+ * @see taxonomy_term_delete()
  */
 function hook_taxonomy_term_predelete(Drupal\taxonomy\Term $term) {
-  db_delete('mytable_index')
-    ->condition('tid', $term->id())
-    ->execute();
+  db_delete('term_synoynm')->condition('tid', $term->tid)->execute();
 }
 
 /**
  * Respond to taxonomy term deletion.
  *
- * This hook is invoked from taxonomy term deletion after field values are
- * deleted and after the term has been removed from the database.
+ * This hook is invoked from taxonomy_term_delete() after field_attach_delete()
+ * has been called and after the term has been removed from the database.
  *
- * @param \Drupal\taxonomy\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   The taxonomy term entity that has been deleted.
+ *
+ * @see taxonomy_term_delete()
  */
 function hook_taxonomy_term_delete(Drupal\taxonomy\Term $term) {
-  db_delete('mytable')
-    ->condition('tid', $term->id())
-    ->execute();
+  db_delete('term_synoynm')->condition('tid', $term->tid)->execute();
 }
 
 /**
  * Act on a taxonomy term that is being assembled before rendering.
  *
- * The module may add elements to a taxonomy term's renderable array array prior
- * to rendering.
-
- * @param array &$build
- *   A renderable array representing the taxonomy term content.
- * @param \Drupal\taxonomy\Entity\Term $term
+ * The module may add elements to $term->content prior to rendering. This hook
+ * will be called after hook_view(). The structure of $term->content is a
+ * renderable array as expected by drupal_render().
+ *
+ * @param $term
  *   The term that is being assembled for rendering.
- * @param \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display
- *   The entity view display holding the display options configured for the term
- *   components.
  * @param $view_mode
  *   The $view_mode parameter from taxonomy_term_view().
  * @param $langcode
@@ -260,16 +240,12 @@ function hook_taxonomy_term_delete(Drupal\taxonomy\Term $term) {
  *
  * @see hook_entity_view()
  */
-function hook_taxonomy_term_view(array &$build, \Drupal\taxonomy\Entity\Term $term, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display, $view_mode, $langcode) {
-  // Only do the extra work if the component is configured to be displayed.
-  // This assumes a 'mymodule_addition' extra field has been defined for the
-  // vocabulary in hook_entity_extra_field_info().
-  if ($display->getComponent('mymodule_addition')) {
-    $build['mymodule_addition'] = array(
-      '#markup' => mymodule_addition($term),
-      '#theme' => 'mymodule_my_additional_field',
-    );
-  }
+function hook_taxonomy_term_view($term, $view_mode, $langcode) {
+  $term->content['my_additional_field'] = array(
+    '#markup' => $additional_field,
+    '#weight' => 10,
+    '#theme' => 'mymodule_my_additional_field',
+  );
 }
 
 /**
@@ -282,20 +258,17 @@ function hook_taxonomy_term_view(array &$build, \Drupal\taxonomy\Entity\Term $te
  * If the module wishes to act on the rendered HTML of the term rather than the
  * structured content array, it may use this hook to add a #post_render
  * callback. Alternatively, it could also implement
- * hook_preprocess_HOOK() for taxonomy-term.html.twig. See drupal_render() and
- * _theme() documentation respectively for details.
+ * hook_preprocess_HOOK() for taxonomy-term.tpl.php. See drupal_render() and
+ * theme() documentation respectively for details.
  *
- * @param array &$build
+ * @param $build
  *   A renderable array representing the taxonomy term content.
- * @param \Drupal\taxonomy\Entity\Term $term
+ * @param Drupal\taxonomy\Term $term
  *   The taxonomy term being rendered.
- * @param \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display
- *   The entity view display holding the display options configured for the term
- *   components.
  *
  * @see hook_entity_view_alter()
  */
-function hook_taxonomy_term_view_alter(array &$build, \Drupal\taxonomy\Entity\Term $term, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display) {
+function hook_taxonomy_term_view_alter(&$build, Drupal\taxonomy\Term $term) {
   if ($build['#view_mode'] == 'full' && isset($build['an_additional_field'])) {
     // Change its weight.
     $build['an_additional_field']['#weight'] = -10;

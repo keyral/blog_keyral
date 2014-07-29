@@ -13,11 +13,14 @@
 /**
  * Respond to a path being inserted.
  *
- * @param array $path
- *   The array structure is identical to that of the return value of
- *   \Drupal\Core\Path\PathInterface::save().
+ * @param $path
+ *   An associative array containing the following keys:
+ *   - source: The internal system path.
+ *   - alias: The URL alias.
+ *   - pid: Unique path alias identifier.
+ *   - langcode: The language code of the alias.
  *
- * @see \Drupal\Core\Path\PathInterface::save()
+ * @see \Drupal\Core\Path\Path::save()
  */
 function hook_path_insert($path) {
   db_insert('mytable')
@@ -32,10 +35,13 @@ function hook_path_insert($path) {
  * Respond to a path being updated.
  *
  * @param $path
- *   The array structure is identical to that of the return value of
- *   \Drupal\Core\Path\PathInterface::save().
+ *   An associative array containing the following keys:
+ *   - source: The internal system path.
+ *   - alias: The URL alias.
+ *   - pid: Unique path alias identifier.
+ *   - langcode: The language code of the alias.
  *
- * @see \Drupal\Core\Path\PathInterface::save()
+ * @see \Drupal\Core\Path\Path::save()
  */
 function hook_path_update($path) {
   db_update('mytable')
@@ -48,10 +54,13 @@ function hook_path_update($path) {
  * Respond to a path being deleted.
  *
  * @param $path
- *   The array structure is identical to that of the return value of
- *   \Drupal\Core\Path\PathInterface::save().
+ *   An associative array containing the following keys:
+ *   - source: The internal system path.
+ *   - alias: The URL alias.
+ *   - pid: Unique path alias identifier.
+ *   - langcode: The language code of the alias.
  *
- * @see \Drupal\Core\Path\PathInterface::delete()
+ * @see \Drupal\Core\Path\Path::delete()
  */
 function hook_path_delete($path) {
   db_delete('mytable')

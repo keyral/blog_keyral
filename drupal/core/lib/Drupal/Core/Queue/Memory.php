@@ -7,6 +7,8 @@
 
 namespace Drupal\Core\Queue;
 
+use stdClass;
+
 /**
  * Static queue implementation.
  *
@@ -44,13 +46,12 @@ class Memory implements QueueInterface {
    * Implements Drupal\Core\Queue\QueueInterface::createItem().
    */
   public function createItem($data) {
-    $item = new \stdClass();
+    $item = new stdClass();
     $item->item_id = $this->idSequence++;
     $item->data = $data;
     $item->created = time();
     $item->expire = 0;
     $this->queue[$item->item_id] = $item;
-    return $item->item_id;
   }
 
   /**

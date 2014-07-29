@@ -10,22 +10,17 @@ namespace Drupal\Core\KeyValueStore;
 /**
  * Defines the key/value store factory for the database backend.
  */
-class KeyValueMemoryFactory implements KeyValueFactoryInterface {
+class KeyValueMemoryFactory {
 
   /**
-   * An array of keyvalue collections that are stored in memory.
+   * Constructs a new key/value memory storage object for a given collection name.
    *
-   * @var array
-   */
-  protected $collections = array();
-
-  /**
-   * {@inheritdoc}
+   * @param string $collection
+   *   The name of the collection holding key and value pairs.
+   * @return \Drupal\Core\KeyValueStore\MemoryStorage
+   *   A key/value store implementation for the given $collection.
    */
   public function get($collection) {
-    if (!isset($this->collections[$collection])) {
-      $this->collections[$collection] = new MemoryStorage($collection);
-    }
-    return $this->collections[$collection];
+    return new MemoryStorage($collection);
   }
 }

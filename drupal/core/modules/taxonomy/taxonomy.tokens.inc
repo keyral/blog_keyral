@@ -5,9 +5,6 @@
  * Builds placeholder replacement tokens for taxonomy terms and vocabularies.
  */
 
-use Drupal\Component\Utility\String;
-use Drupal\Component\Utility\Xss;
-
 /**
  * Implements hook_token_info().
  */
@@ -92,8 +89,6 @@ function taxonomy_token_info() {
  * Implements hook_tokens().
  */
 function taxonomy_tokens($type, $tokens, array $data = array(), array $options = array()) {
-  $token_service = \Drupal::token();
-
   $replacements = array();
   $sanitize = !empty($options['sanitize']);
 
@@ -103,51 +98,52 @@ function taxonomy_tokens($type, $tokens, array $data = array(), array $options =
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'tid':
-          $replacements[$original] = $term->id();
+          $replacements[$original] = $term->tid;
           break;
 
         case 'name':
-          $replacements[$original] = $sanitize ? String::checkPlain($term->getName()) : $term->getName();
+          $replacements[$original] = $sanitize ? check_plain($term->name) : $term->name;
           break;
 
         case 'description':
-          $replacements[$original] = $sanitize ? $term->description->processed : $term->getDescription();
+          $replacements[$original] = $sanitize ? check_markup($term->description, $term->format, '', TRUE) : $term->description;
           break;
 
         case 'url':
-          $replacements[$original] = $term->url('canonical', array('absolute' => TRUE));
+          $uri = $term->uri();
+          $replacements[$original] = url($uri['path'], array_merge($uri['options'], array('absolute' => TRUE)));
           break;
 
         case 'node-count':
           $query = db_select('taxonomy_index');
-          $query->condition('tid', $term->id());
+          $query->condition('tid', $term->tid);
           $query->addTag('term_node_count');
           $count = $query->countQuery()->execute()->fetchField();
           $replacements[$original] = $count;
           break;
 
         case 'vocabulary':
-          $vocabulary = entity_load('taxonomy_vocabulary', $term->bundle());
-          $replacements[$original] = String::checkPlain($vocabulary->name);
+          $vocabulary = taxonomy_vocabulary_load($term->vid);
+          $replacements[$original] = check_plain($vocabulary->name);
           break;
 
         case 'parent':
-          if ($parents = taxonomy_term_load_parents($term->id())) {
+          if ($parents = taxonomy_term_load_parents($term->tid)) {
             $parent = array_pop($parents);
-            $replacements[$original] = String::checkPlain($parent->getName());
+            $replacements[$original] = check_plain($parent->name);
           }
           break;
       }
     }
 
-    if ($vocabulary_tokens = $token_service->findWithPrefix($tokens, 'vocabulary')) {
-      $vocabulary = entity_load('taxonomy_vocabulary', $term->bundle());
-      $replacements += $token_service->generate('vocabulary', $vocabulary_tokens, array('vocabulary' => $vocabulary), $options);
+    if ($vocabulary_tokens = token_find_with_prefix($tokens, 'vocabulary')) {
+      $vocabulary = taxonomy_vocabulary_load($term->vid);
+      $replacements += token_generate('vocabulary', $vocabulary_tokens, array('vocabulary' => $vocabulary), $options);
     }
 
-    if (($vocabulary_tokens = $token_service->findWithPrefix($tokens, 'parent')) && $parents = taxonomy_term_load_parents($term->id())) {
+    if (($vocabulary_tokens = token_find_with_prefix($tokens, 'parent')) && $parents = taxonomy_term_load_parents($term->tid)) {
       $parent = array_pop($parents);
-      $replacements += $token_service->generate('term', $vocabulary_tokens, array('term' => $parent), $options);
+      $replacements += token_generate('term', $vocabulary_tokens, array('term' => $parent), $options);
     }
   }
 
@@ -157,27 +153,33 @@ function taxonomy_tokens($type, $tokens, array $data = array(), array $options =
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'vid':
-          $replacements[$original] = $vocabulary->id();
+          $replacements[$original] = $vocabulary->vid;
           break;
 
         case 'name':
-          $replacements[$original] = $sanitize ? String::checkPlain($vocabulary->name) : $vocabulary->name;
+          $replacements[$original] = $sanitize ? check_plain($vocabulary->name) : $vocabulary->name;
           break;
 
         case 'description':
-          $replacements[$original] = $sanitize ? Xss::filter($vocabulary->description) : $vocabulary->description;
+          $replacements[$original] = $sanitize ? filter_xss($vocabulary->description) : $vocabulary->description;
           break;
 
         case 'term-count':
-          $replacements[$original] = \Drupal::entityQuery('taxonomy_term')
-            ->condition('vid', $vocabulary->id())
-            ->addTag('vocabulary_term_count')
-            ->count()
-            ->execute();
+          $query = db_select('taxonomy_term_data');
+          $query->condition('vid', $vocabulary->vid);
+          $query->addTag('vocabulary_term_count');
+          $count = $query->countQuery()->execute()->fetchField();
+          $replacements[$original] = $count;
           break;
 
         case 'node-count':
-          $replacements[$original] = \Drupal::entityManager()->getStorage('taxonomy_term')->nodeCount($vocabulary->id());
+          $query = db_select('taxonomy_index', 'ti');
+          $query->addExpression('COUNT(DISTINCT ti.nid)');
+          $query->leftJoin('taxonomy_term_data', 'td', 'ti.tid = td.tid');
+          $query->condition('td.vid', $vocabulary->vid);
+          $query->addTag('vocabulary_node_count');
+          $count = $query->execute()->fetchField();
+          $replacements[$original] = $count;
           break;
       }
     }

@@ -17,8 +17,6 @@ namespace Drupal\Core\Cache;
  * operations would have a negative impact on performance.
  *
  * This also can be used for testing purposes.
- *
- * @ingroup cache
  */
 class NullBackend implements CacheBackendInterface {
 
@@ -47,12 +45,7 @@ class NullBackend implements CacheBackendInterface {
   /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::set().
    */
-  public function set($cid, $data, $expire = Cache::PERMANENT, array $tags = array()) {}
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setMultiple(array $items = array()) {}
+  public function set($cid, $data, $expire = CacheBackendInterface::CACHE_PERMANENT, array $tags = array()) {}
 
   /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::delete().
@@ -68,6 +61,11 @@ class NullBackend implements CacheBackendInterface {
    * Implements Drupal\Core\Cache\CacheBackendInterface::deleteAll().
    */
   public function deleteAll() {}
+
+  /**
+   * Implements Drupal\Core\Cache\CacheBackendInterface::deleteExpired().
+   */
+  public function deleteExpired() {}
 
   /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::deleteTags().
@@ -100,7 +98,9 @@ class NullBackend implements CacheBackendInterface {
   public function garbageCollection() {}
 
   /**
-   * {@inheritdoc}
+   * Implements Drupal\Core\Cache\CacheBackendInterface::isEmpty().
    */
-  public function removeBin() {}
+  public function isEmpty() {
+    return TRUE;
+  }
 }

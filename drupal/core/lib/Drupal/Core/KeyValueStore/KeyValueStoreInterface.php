@@ -21,28 +21,15 @@ interface KeyValueStoreInterface {
   public function getCollectionName();
 
   /**
-   * Returns whether a given key exists in the store.
-   *
-   * @param string $key
-   *   The key to check.
-   *
-   * @return bool
-   *   TRUE if the key exists, FALSE otherwise.
-   */
-  public function has($key);
-
-  /**
    * Returns the stored value for a given key.
    *
    * @param string $key
    *   The key of the data to retrieve.
-   * @param mixed $default
-   *   The default value to use if the key is not found.
    *
    * @return mixed
-   *   The stored value, or the default value if no value exists.
+   *   The stored value, or NULL if no value exists.
    */
-  public function get($key, $default = NULL);
+  public function get($key);
 
   /**
    * Returns the stored key/value pairs for a given set of keys.
@@ -97,16 +84,6 @@ interface KeyValueStoreInterface {
   public function setMultiple(array $data);
 
   /**
-   * Renames a key.
-   *
-   * @param string $key
-   *   The key to rename.
-   * @param string $new_key
-   *   The new key name.
-   */
-  public function rename($key, $new_key);
-
-  /**
    * Deletes an item from the key/value store.
    *
    * @param string $key
@@ -121,10 +98,5 @@ interface KeyValueStoreInterface {
    *   A list of item names to delete.
    */
   public function deleteMultiple(array $keys);
-
-  /**
-   * Deletes all items from the key/value store.
-   */
-  public function deleteAll();
 
 }

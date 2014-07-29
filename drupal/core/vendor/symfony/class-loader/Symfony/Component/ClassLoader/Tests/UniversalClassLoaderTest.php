@@ -23,7 +23,7 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         $loader = new UniversalClassLoader();
         $loader->registerNamespace('Namespaced', __DIR__.DIRECTORY_SEPARATOR.'Fixtures');
         $loader->registerPrefix('Pearlike_', __DIR__.DIRECTORY_SEPARATOR.'Fixtures');
-        $this->assertTrue($loader->loadClass($testClassName));
+        $loader->loadClass($testClassName);
         $this->assertTrue(class_exists($className), $message);
     }
 
@@ -32,6 +32,8 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         return array(
             array('\\Namespaced\\Foo', 'Namespaced\\Foo',   '->loadClass() loads Namespaced\Foo class'),
             array('\\Pearlike_Foo',    'Pearlike_Foo',      '->loadClass() loads Pearlike_Foo class'),
+            array('\\Namespaced\\Bar', '\\Namespaced\\Bar', '->loadClass() loads Namespaced\Bar class with a leading slash'),
+            array('\\Pearlike_Bar',    '\\Pearlike_Bar',    '->loadClass() loads Pearlike_Bar class with a leading slash'),
         );
     }
 
@@ -47,7 +49,7 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         $loader->useIncludePath(true);
         $this->assertTrue($loader->getUseIncludePath());
 
-        set_include_path(__DIR__.'/Fixtures/includepath'.PATH_SEPARATOR.$includePath);
+        set_include_path(__DIR__.'/Fixtures/includepath' . PATH_SEPARATOR . $includePath);
 
         $this->assertEquals(__DIR__.DIRECTORY_SEPARATOR.'Fixtures'.DIRECTORY_SEPARATOR.'includepath'.DIRECTORY_SEPARATOR.'Foo.php', $loader->findFile('Foo'));
 
@@ -90,7 +92,7 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         $loader->registerPrefix('Pearlike_', __DIR__.DIRECTORY_SEPARATOR.'Fixtures');
         $loader->registerNamespaceFallbacks(array(__DIR__.DIRECTORY_SEPARATOR.'Fixtures/fallback'));
         $loader->registerPrefixFallbacks(array(__DIR__.DIRECTORY_SEPARATOR.'Fixtures/fallback'));
-        $this->assertTrue($loader->loadClass($testClassName));
+        $loader->loadClass($testClassName);
         $this->assertTrue(class_exists($className), $message);
     }
 
@@ -126,7 +128,7 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         $loader = new UniversalClassLoader();
         $loader->registerNamespaces($namespaces);
 
-        $this->assertTrue($loader->loadClass($className));
+        $loader->loadClass($className);
         $this->assertTrue(class_exists($className), $message);
     }
 
@@ -176,7 +178,7 @@ class UniversalClassLoaderTest extends \PHPUnit_Framework_TestCase
         $loader = new UniversalClassLoader();
         $loader->registerPrefixes($prefixes);
 
-        $this->assertTrue($loader->loadClass($className));
+        $loader->loadClass($className);
         $this->assertTrue(class_exists($className), $message);
     }
 

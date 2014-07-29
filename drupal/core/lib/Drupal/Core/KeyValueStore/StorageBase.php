@@ -36,9 +36,9 @@ abstract class StorageBase implements KeyValueStoreInterface {
   /**
    * Implements Drupal\Core\KeyValueStore\KeyValueStoreInterface::get().
    */
-  public function get($key, $default = NULL) {
+  public function get($key) {
     $values = $this->getMultiple(array($key));
-    return isset($values[$key]) ? $values[$key] : $default;
+    return isset($values[$key]) ? $values[$key] : NULL;
   }
 
   /**

@@ -7,21 +7,6 @@
 
 
 /**
- * Act on a newly created file.
- *
- * This hook runs after a new file object has just been instantiated. It can be
- * used to set initial values, e.g. to provide defaults.
- *
- * @param \Drupal\file\Entity\File $file
- *   The file object.
- */
-function hook_file_create(\Drupal\file\Entity\File $file) {
-  if (!isset($file->foo)) {
-    $file->foo = 'some_initial_value';
-  }
-}
-
-/**
  * Load additional information into file entities.
  *
  * file_load_multiple() calls this hook to allow modules to load
@@ -38,7 +23,7 @@ function hook_file_load($files) {
   $result = db_query('SELECT * FROM {upload} u WHERE u.fid IN (:fids)', array(':fids' => array_keys($files)))->fetchAll(PDO::FETCH_ASSOC);
   foreach ($result as $record) {
     foreach ($record as $key => $value) {
-      $files[$record['target_id']]->$key = $value;
+      $files[$record['fid']]->$key = $value;
     }
   }
 }
@@ -49,7 +34,7 @@ function hook_file_load($files) {
  * This hook lets modules perform additional validation on files. They're able
  * to report a failure by returning one or more error messages.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file entity being validated.
  * @return
  *   An array of error messages. If there are no problems with the file return
@@ -57,13 +42,13 @@ function hook_file_load($files) {
  *
  * @see file_validate()
  */
-function hook_file_validate(Drupal\file\FileInterface $file) {
+function hook_file_validate(Drupal\file\File $file) {
   $errors = array();
 
-  if (!$file->getFilename()) {
+  if (empty($file->filename)) {
     $errors[] = t("The file's name is empty. Please give a name to the file.");
   }
-  if (strlen($file->getFilename()) > 255) {
+  if (strlen($file->filename) > 255) {
     $errors[] = t("The file's name exceeds the 255 characters limit. Please rename the file and try again.");
   }
 
@@ -77,12 +62,12 @@ function hook_file_validate(Drupal\file\FileInterface $file) {
  * doesn't distinguish between files created as a result of a copy or those
  * created by an upload.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file entity that is about to be created or updated.
  */
-function hook_file_presave(Drupal\file\FileInterface $file) {
-  // Change the owner of the file.
-  $file->uid->value = 1;
+function hook_file_presave(Drupal\file\File $file) {
+  // Change the file timestamp to an hour prior.
+  $file->timestamp -= 3600;
 }
 
 /**
@@ -92,14 +77,14 @@ function hook_file_presave(Drupal\file\FileInterface $file) {
  * doesn't distinguish between files created as a result of a copy or those
  * created by an upload.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file that has been added.
  */
-function hook_file_insert(Drupal\file\FileInterface $file) {
+function hook_file_insert(Drupal\file\File $file) {
   // Add a message to the log, if the file is a jpg
   $validate = file_validate_extensions($file, 'jpg');
   if (empty($validate)) {
-    \Drupal::logger('file')->notice('A jpg has been added.');
+    watchdog('file', 'A jpg has been added.');
   }
 }
 
@@ -108,57 +93,60 @@ function hook_file_insert(Drupal\file\FileInterface $file) {
  *
  * This hook is called when an existing file is saved.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file that has just been updated.
  */
-function hook_file_update(Drupal\file\FileInterface $file) {
+function hook_file_update(Drupal\file\File $file) {
+  $file_user = user_load($file->uid);
   // Make sure that the file name starts with the owner's user name.
-  if (strpos($file->getFilename(), $file->getOwner()->name) !== 0) {
-    $old_filename = $file->getFilename();
-    $file->setFilename($file->getOwner()->name . '_' . $file->getFilename());
+  if (strpos($file->filename, $file_user->name) !== 0) {
+    $old_filename = $file->filename;
+    $file->filename = $file_user->name . '_' . $file->filename;
     $file->save();
 
-    \Drupal::logger('file')->notice('%source has been renamed to %destination', array('%source' => $old_filename, '%destination' => $file->getFilename()));
+    watchdog('file', t('%source has been renamed to %destination', array('%source' => $old_filename, '%destination' => $file->filename)));
   }
 }
 
 /**
  * Respond to a file that has been copied.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The newly copied file entity.
- * @param \Drupal\file\FileInterface $source
+ * @param Drupal\file\File $source
  *   The original file before the copy.
  *
  * @see file_copy()
  */
-function hook_file_copy(Drupal\file\FileInterface $file, Drupal\file\FileInterface $source) {
+function hook_file_copy(Drupal\file\File $file, Drupal\file\File $source) {
+  $file_user = user_load($file->uid);
   // Make sure that the file name starts with the owner's user name.
-  if (strpos($file->getFilename(), $file->getOwner()->name) !== 0) {
-    $file->setFilename($file->getOwner()->name . '_' . $file->getFilename());
+  if (strpos($file->filename, $file_user->name) !== 0) {
+    $file->filename = $file_user->name . '_' . $file->filename;
     $file->save();
 
-    \Drupal::logger('file')->notice('Copied file %source has been renamed to %destination', array('%source' => $source->filename, '%destination' => $file->getFilename()));
+    watchdog('file', t('Copied file %source has been renamed to %destination', array('%source' => $source->filename, '%destination' => $file->filename)));
   }
 }
 
 /**
  * Respond to a file that has been moved.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The updated file entity after the move.
- * @param \Drupal\file\FileInterface $source
+ * @param Drupal\file\File $source
  *   The original file entity before the move.
  *
  * @see file_move()
  */
-function hook_file_move(Drupal\file\FileInterface $file, Drupal\file\FileInterface $source) {
+function hook_file_move(Drupal\file\File $file, Drupal\file\File $source) {
+  $file_user = user_load($file->uid);
   // Make sure that the file name starts with the owner's user name.
-  if (strpos($file->getFilename(), $file->getOwner()->name) !== 0) {
-    $file->setFilename($file->getOwner()->name . '_' . $file->getFilename());
+  if (strpos($file->filename, $file_user->name) !== 0) {
+    $file->filename = $file_user->name . '_' . $file->filename;
     $file->save();
 
-    \Drupal::logger('file')->notice('Moved file %source has been renamed to %destination', array('%source' => $source->filename, '%destination' => $file->getFilename()));
+    watchdog('file', t('Moved file %source has been renamed to %destination', array('%source' => $source->filename, '%destination' => $file->filename)));
   }
 }
 
@@ -168,16 +156,16 @@ function hook_file_move(Drupal\file\FileInterface $file, Drupal\file\FileInterfa
  * This hook is invoked when deleting a file before the file is removed from the
  * filesystem and before its records are removed from the database.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file that is about to be deleted.
  *
  * @see hook_file_delete()
- * @see \Drupal\file\FileStorage::delete()
+ * @see Drupal\file\FileStorageController::delete()
  * @see upload_file_delete()
  */
-function hook_file_predelete(Drupal\file\FileInterface $file) {
+function hook_file_predelete(Drupal\file\File $file) {
   // Delete all information associated with the file.
-  db_delete('upload')->condition('fid', $file->id())->execute();
+  db_delete('upload')->condition('fid', $file->fid)->execute();
 }
 
 /**
@@ -186,15 +174,15 @@ function hook_file_predelete(Drupal\file\FileInterface $file) {
  * This hook is invoked after the file has been removed from
  * the filesystem and after its records have been removed from the database.
  *
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file that has just been deleted.
  *
  * @see hook_file_predelete()
- * @see \Drupal\file\FileStorage::delete()
+ * @see Drupal\file\FileStorageController::delete()
  */
-function hook_file_delete(Drupal\file\FileInterface $file) {
+function hook_file_delete(Drupal\file\File $file) {
   // Delete all information associated with the file.
-  db_delete('upload')->condition('fid', $file->id())->execute();
+  db_delete('upload')->condition('fid', $file->fid)->execute();
 }
 
 /**
@@ -206,9 +194,9 @@ function hook_file_delete(Drupal\file\FileInterface $file) {
  *
  * @param $field
  *   The field to which the file belongs.
- * @param \Drupal\Core\Entity\EntityInterface $entity
+ * @param Drupal\Core\Entity\EntityInterface $entity
  *   The entity which references the file.
- * @param \Drupal\file\FileInterface $file
+ * @param Drupal\file\File $file
  *   The file entity that is being requested.
  *
  * @return
@@ -216,11 +204,11 @@ function hook_file_delete(Drupal\file\FileInterface $file) {
  *   that denial may be overridden by another entity controller, making this
  *   grant permissive rather than restrictive.
  *
- * @see hook_entity_field_access().
+ * @see hook_field_access().
  */
-function hook_file_download_access($field, Drupal\Core\Entity\EntityInterface $entity, Drupal\file\FileInterface $file) {
-  if ($entity->getEntityTypeId() == 'node') {
-    return $entity->access('view');
+function hook_file_download_access($field, Drupal\Core\Entity\EntityInterface $entity, Drupal\file\File $file) {
+  if ($entity->entityType() == 'node') {
+    return node_access('view', $entity);
   }
 }
 

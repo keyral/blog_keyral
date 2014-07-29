@@ -12,6 +12,7 @@
 namespace Symfony\Component\HttpKernel;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\Config\Loader\LoaderInterface;
 
@@ -29,7 +30,7 @@ interface KernelInterface extends HttpKernelInterface, \Serializable
     /**
      * Returns an array of bundles to registers.
      *
-     * @return BundleInterface[] An array of bundle instances.
+     * @return array An array of bundle instances.
      *
      * @api
      */
@@ -63,7 +64,7 @@ interface KernelInterface extends HttpKernelInterface, \Serializable
     /**
      * Gets the registered bundle instances.
      *
-     * @return BundleInterface[] An array of registered bundle instances
+     * @return array An array of registered bundle instances
      *
      * @api
      */
@@ -86,7 +87,7 @@ interface KernelInterface extends HttpKernelInterface, \Serializable
      * @param string  $name  Bundle name
      * @param Boolean $first Whether to return the first bundle only or together with its descendants
      *
-     * @return BundleInterface|BundleInterface[] A BundleInterface instance or an array of BundleInterface instances if $first is false
+     * @return BundleInterface|Array A BundleInterface instance or an array of BundleInterface instances if $first is false
      *
      * @throws \InvalidArgumentException when the bundle is not enabled
      *

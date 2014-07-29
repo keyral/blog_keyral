@@ -12,7 +12,8 @@
 /**
  * Represents a macro node.
  *
- * @author Fabien Potencier <fabien@symfony.com>
+ * @package    twig
+ * @author     Fabien Potencier <fabien@symfony.com>
  */
 class Twig_Node_Macro extends Twig_Node
 {
@@ -28,27 +29,14 @@ class Twig_Node_Macro extends Twig_Node
      */
     public function compile(Twig_Compiler $compiler)
     {
-        $compiler
-            ->addDebugInfo($this)
-            ->write(sprintf("public function get%s(", $this->getAttribute('name')))
-        ;
-
-        $count = count($this->getNode('arguments'));
-        $pos = 0;
-        foreach ($this->getNode('arguments') as $name => $default) {
-            $compiler
-                ->raw('$_'.$name.' = ')
-                ->subcompile($default)
-            ;
-
-            if (++$pos < $count) {
-                $compiler->raw(', ');
-            }
+        $arguments = array();
+        foreach ($this->getNode('arguments') as $argument) {
+            $arguments[] = '$'.$argument->getAttribute('name').' = null';
         }
 
         $compiler
-            ->raw(")\n")
-            ->write("{\n")
+            ->addDebugInfo($this)
+            ->write(sprintf("public function get%s(%s)\n", $this->getAttribute('name'), implode(', ', $arguments)), "{\n")
             ->indent()
         ;
 
@@ -60,11 +48,11 @@ class Twig_Node_Macro extends Twig_Node
                 ->indent()
             ;
 
-            foreach ($this->getNode('arguments') as $name => $default) {
+            foreach ($this->getNode('arguments') as $argument) {
                 $compiler
                     ->write('')
-                    ->string($name)
-                    ->raw(' => $_'.$name)
+                    ->string($argument->getAttribute('name'))
+                    ->raw(' => $'.$argument->getAttribute('name'))
                     ->raw(",\n")
                 ;
             }
@@ -82,13 +70,13 @@ class Twig_Node_Macro extends Twig_Node
             ->indent()
             ->subcompile($this->getNode('body'))
             ->outdent()
-            ->write("} catch (Exception \$e) {\n")
+            ->write("} catch(Exception \$e) {\n")
             ->indent()
             ->write("ob_end_clean();\n\n")
             ->write("throw \$e;\n")
             ->outdent()
             ->write("}\n\n")
-            ->write("return ('' === \$tmp = ob_get_clean()) ? '' : new Twig_Markup(\$tmp, \$this->env->getCharset());\n")
+            ->write("return ob_get_clean();\n")
             ->outdent()
             ->write("}\n\n")
         ;

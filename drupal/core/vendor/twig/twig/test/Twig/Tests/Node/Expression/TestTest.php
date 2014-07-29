@@ -9,17 +9,19 @@
  * file that was distributed with this source code.
  */
 
-class Twig_Tests_Node_Expression_TestTest extends Twig_Test_NodeTestCase
+require_once dirname(__FILE__).'/../TestCase.php';
+
+class Twig_Tests_Node_Expression_TestTest extends Twig_Tests_Node_TestCase
 {
     /**
      * @covers Twig_Node_Expression_Test::__construct
      */
     public function testConstructor()
     {
-        $expr = new Twig_Node_Expression_Constant('foo', 1);
-        $name = new Twig_Node_Expression_Constant('null', 1);
+        $expr = new Twig_Node_Expression_Constant('foo', 0);
+        $name = new Twig_Node_Expression_Constant('null', 0);
         $args = new Twig_Node();
-        $node = new Twig_Node_Expression_Test($expr, $name, $args, 1);
+        $node = new Twig_Node_Expression_Test($expr, $name, $args, 0);
 
         $this->assertEquals($expr, $node->getNode('node'));
         $this->assertEquals($args, $node->getNode('arguments'));
@@ -39,30 +41,27 @@ class Twig_Tests_Node_Expression_TestTest extends Twig_Test_NodeTestCase
     {
         $tests = array();
 
-        $expr = new Twig_Node_Expression_Constant('foo', 1);
-        $node = new Twig_Node_Expression_Test_Null($expr, 'null', new Twig_Node(array()), 1);
-        $tests[] = array($node, '(null === "foo")');
+        $expr = new Twig_Node_Expression_Constant('foo', 0);
+        $node = new Twig_Node_Expression_Test_Null($expr, 'null', new Twig_Node(array()), 0);
 
-        // test as an anonymous function
-        if (version_compare(phpversion(), '5.3.0', '>=')) {
-            $node = $this->createTest(new Twig_Node_Expression_Constant('foo', 1), 'anonymous', array(new Twig_Node_Expression_Constant('foo', 1)));
-            $tests[] = array($node, 'call_user_func_array($this->env->getTest(\'anonymous\')->getCallable(), array("foo", "foo"))');
-        }
+        $tests[] = array($node, '(null === "foo")');
 
         return $tests;
     }
 
-    protected function createTest($node, $name, array $arguments = array())
+    /**
+     * @covers Twig_Node_Expression_Filter::compile
+     * @expectedException        Twig_Error_Syntax
+     * @expectedExceptionMessage The test "nul" does not exist. Did you mean "null" at line 0
+     */
+    public function testUnknownTest()
     {
-        return new Twig_Node_Expression_Test($node, $name, new Twig_Node($arguments), 1);
+        $node = $this->createTest(new Twig_Node_Expression_Constant('foo', 0), 'nul');
+        $node->compile($this->getCompiler());
     }
 
-    protected function getEnvironment()
+    protected function createTest($node, $name, array $arguments = array())
     {
-        if (version_compare(phpversion(), '5.3.0', '>=')) {
-            return include 'PHP53/TestInclude.php';
-        }
-
-        return parent::getEnvironment();
+        return new Twig_Node_Expression_Test($node, $name, new Twig_Node($arguments), 0);
     }
 }

@@ -2,16 +2,17 @@
 
 /**
  * @file
- * Provide views data for comment.module.
+ * Provide views data and handlers for comment.module.
+ *
+ * @ingroup views_module_handlers
  */
 
 /**
  * Implements hook_views_data().
  */
 function comment_views_data() {
-
-  // Define the base group of this table. Fields that don't have a group defined
-  // will go into this field by default.
+  // Define the base group of this table. Fields that don't
+  // have a group defined will go into this field by default.
   $data['comment']['table']['group']  = t('Comment');
 
   $data['comment']['table']['base'] = array(
@@ -23,11 +24,15 @@ function comment_views_data() {
   $data['comment']['table']['entity type'] = 'comment';
   $data['comment']['table']['wizard_id'] = 'comment';
 
+  // Fields
+
+  // subject
   $data['comment']['subject'] = array(
     'title' => t('Title'),
     'help' => t('The title of the comment.'),
     'field' => array(
       'id' => 'comment',
+      'click sortable' => TRUE,
     ),
     'filter' => array(
       'id' => 'string',
@@ -40,11 +45,13 @@ function comment_views_data() {
     ),
   );
 
+  // cid
   $data['comment']['cid'] = array(
     'title' => t('ID'),
     'help' => t('The comment ID of the field'),
     'field' => array(
       'id' => 'comment',
+      'click sortable' => TRUE,
     ),
     'filter' => array(
       'id' => 'numeric',
@@ -57,11 +64,13 @@ function comment_views_data() {
     ),
   );
 
+  // name (of comment author)
   $data['comment']['name'] = array(
     'title' => t('Author'),
     'help' => t("The name of the comment's author. Can be rendered as a link to the author's homepage."),
     'field' => array(
       'id' => 'comment_username',
+      'click sortable' => TRUE,
     ),
     'filter' => array(
       'id' => 'string',
@@ -74,11 +83,13 @@ function comment_views_data() {
     ),
   );
 
+  // homepage
   $data['comment']['homepage'] = array(
     'title' => t("Author's website"),
     'help' => t("The website address of the comment's author. Can be rendered as a link. Will be empty if the author is a registered user."),
     'field' => array(
       'id' => 'url',
+      'click sortable' => TRUE,
     ),
     'filter' => array(
       'id' => 'string',
@@ -91,12 +102,14 @@ function comment_views_data() {
     ),
   );
 
+  // hostname
   $data['comment']['hostname'] = array(
     'title' => t('Hostname'),
     'help' => t('Hostname of user that posted the comment.'),
     'field' => array(
       'id' => 'standard',
-    ),
+      'click sortable' => TRUE,
+     ),
     'filter' => array(
       'id' => 'string',
     ),
@@ -108,12 +121,14 @@ function comment_views_data() {
     ),
   );
 
+  // mail
   $data['comment']['mail'] = array(
-    'title' => t('Email'),
+    'title' => t('Mail'),
     'help' => t('Email of user that posted the comment. Will be empty if the author is a registered user.'),
     'field' => array(
       'id' => 'standard',
-    ),
+      'click sortable' => TRUE,
+     ),
     'filter' => array(
       'id' => 'string',
     ),
@@ -125,11 +140,13 @@ function comment_views_data() {
     ),
   );
 
+  // created (when comment was posted)
   $data['comment']['created'] = array(
     'title' => t('Post date'),
     'help' => t('Date and time of when the comment was created.'),
     'field' => array(
       'id' => 'date',
+      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date',
@@ -139,12 +156,14 @@ function comment_views_data() {
     ),
   );
 
-  if (\Drupal::moduleHandler()->moduleExists('language')) {
+  // Langcode field
+  if (module_exists('language')) {
     $data['comment']['langcode'] = array(
       'title' => t('Language'),
       'help' => t('The language the comment is in.'),
       'field' => array(
         'id' => 'language',
+        'click sortable' => TRUE,
       ),
       'filter' => array(
         'id' => 'language',
@@ -158,11 +177,13 @@ function comment_views_data() {
     );
   }
 
+  // changed (when comment was last updated)
   $data['comment']['changed'] = array(
     'title' => t('Updated date'),
     'help' => t('Date and time of when the comment was last updated.'),
     'field' => array(
       'id' => 'date',
+      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date',
@@ -177,7 +198,7 @@ function comment_views_data() {
     'help' => t('Date in the form of CCYYMMDD.'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_fulldate',
+      'id' => 'node_created_fulldate',
     ),
   );
 
@@ -186,7 +207,7 @@ function comment_views_data() {
     'help' => t('Date in the form of YYYYMM.'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_year_month',
+      'id' => 'node_created_year_month',
     ),
   );
 
@@ -195,7 +216,7 @@ function comment_views_data() {
     'help' => t('Date in the form of YYYY.'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_year',
+      'id' => 'node_created_year',
     ),
   );
 
@@ -204,7 +225,7 @@ function comment_views_data() {
     'help' => t('Date in the form of MM (01 - 12).'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_month',
+      'id' => 'node_created_month',
     ),
   );
 
@@ -213,7 +234,7 @@ function comment_views_data() {
     'help' => t('Date in the form of DD (01 - 31).'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_day',
+      'id' => 'node_created_day',
     ),
   );
 
@@ -222,22 +243,24 @@ function comment_views_data() {
     'help' => t('Date in the form of WW (01 - 53).'),
     'argument' => array(
       'field' => 'changed',
-      'id' => 'date_week',
+      'id' => 'node_created_week',
     ),
   );
 
+  // status (approved or not)
   $data['comment']['status'] = array(
-    'title' => t('Approved status'),
+    'title' => t('Approved'),
     'help' => t('Whether the comment is approved (or still in the moderation queue).'),
     'field' => array(
       'id' => 'boolean',
+      'click sortable' => TRUE,
       'output formats' => array(
         'approved-not-approved' => array(t('Approved'), t('Not Approved')),
       ),
     ),
     'filter' => array(
       'id' => 'boolean',
-      'label' => t('Approved comment status'),
+      'label' => t('Approved comment'),
       'type' => 'yes-no',
     ),
     'sort' => array(
@@ -245,41 +268,46 @@ function comment_views_data() {
     ),
   );
 
+  // link to view comment
   $data['comment']['view_comment'] = array(
     'field' => array(
-      'title' => t('Link to comment'),
+      'title' => t('View link'),
       'help' => t('Provide a simple link to view the comment.'),
       'id' => 'comment_link',
     ),
   );
 
+  // link to edit comment
   $data['comment']['edit_comment'] = array(
     'field' => array(
-      'title' => t('Link to edit comment'),
+      'title' => t('Edit link'),
       'help' => t('Provide a simple link to edit the comment.'),
       'id' => 'comment_link_edit',
     ),
   );
 
+  // link to delete comment
   $data['comment']['delete_comment'] = array(
     'field' => array(
-      'title' => t('Link to delete comment'),
+      'title' => t('Delete link'),
       'help' => t('Provide a simple link to delete the comment.'),
       'id' => 'comment_link_delete',
     ),
   );
 
+  // link to approve comment
   $data['comment']['approve_comment'] = array(
     'field' => array(
-      'title' => t('Link to approve comment'),
+      'title' => t('Approve link'),
       'help' => t('Provide a simple link to approve the comment.'),
       'id' => 'comment_link_approve',
     ),
   );
 
+  // link to reply to comment
   $data['comment']['replyto_comment'] = array(
     'field' => array(
-      'title' => t('Link to reply-to comment'),
+      'title' => t('Reply-to link'),
       'help' => t('Provide a simple link to reply to the comment.'),
       'id' => 'comment_link_reply',
     ),
@@ -298,11 +326,16 @@ function comment_views_data() {
     ),
   );
 
-  $data['comment']['entity_id'] = array(
-    'title' => t('Entity ID'),
-    'help' => t('The Entity ID to which the comment is a reply to.'),
-    'field' => array(
+  $data['comment']['nid'] = array(
+    'title' => t('Nid'),
+    'help' => t('The node ID to which the comment is a reply to.'),
+    'relationship' => array(
+      'title' => t('Content'),
+      'help' => t('The content to which the comment is a reply to.'),
+      'base' => 'node',
+      'base field' => 'nid',
       'id' => 'standard',
+      'label' => t('Content'),
     ),
     'filter' => array(
       'id' => 'numeric',
@@ -310,90 +343,10 @@ function comment_views_data() {
     'argument' => array(
       'id' => 'numeric',
     ),
-    'sort' => array(
-      'id' => 'standard',
-    ),
-  );
-
-  $data['comment']['entity_type'] = array(
-    'title' => t('Entity type'),
-    'help' => t('The Entity type to which the comment is a reply to.'),
     'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
-    ),
-    'sort' => array(
-      'id' => 'standard',
+      'id' => 'numeric',
     ),
   );
-
-  $data['comment']['field_name'] = array(
-    'title' => t('Comment field name'),
-    'help' => t('The Field name from which the comment originated.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
-    ),
-    'sort' => array(
-      'id' => 'standard',
-    ),
-  );
-
-  $data['comment']['comment_type'] = array(
-    'title' => t('Comment type'),
-    'help' => t('The comment type for this comment.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
-    ),
-    'sort' => array(
-      'id' => 'standard',
-    ),
-  );
-
-  $entities_types = \Drupal::entityManager()->getDefinitions();
-
-  // Provide a relationship for each entity type except comment.
-  foreach ($entities_types as $type => $entity_type) {
-    if ($type == 'comment' || !$entity_type->isFieldable() || !$entity_type->getBaseTable()) {
-      continue;
-    }
-    if ($fields = \Drupal::service('comment.manager')->getFields($type)) {
-      $data['comment'][$type] = array(
-        'relationship' => array(
-          'title' => $entity_type->getLabel(),
-          'help' => t('The @entity_type to which the comment is a reply to.', array('@entity_type' => $entity_type->getLabel())),
-          'base' => $entity_type->getBaseTable(),
-          'base field' => $entity_type->getKey('id'),
-          'relationship field' => 'entity_id',
-          'id' => 'standard',
-          'label' => $entity_type->getLabel(),
-          'extra' => array(
-            array(
-              'field' => 'entity_type',
-              'value' => $type,
-              'table' => 'comment'
-            ),
-          ),
-        ),
-      );
-    }
-  }
 
   $data['comment']['uid'] = array(
     'title' => t('Author uid'),
@@ -433,51 +386,28 @@ function comment_views_data() {
     ),
   );
 
-  if (\Drupal::moduleHandler()->moduleExists('content_translation')) {
-    $data['comment']['translation_link'] = array(
-      'title' => t('Translation link'),
-      'help' => t('Provide a link to the translations overview for comments.'),
-      'field' => array(
-        'id' => 'content_translation_link',
-      ),
-    );
-  }
+  // node_comment_statistics table
 
-  // Define the base group of this table. Fields that don't have a group defined
-  // will go into this field by default.
-  $data['comment_entity_statistics']['table']['group']  = t('Comment Statistics');
+  // define the group
+  $data['node_comment_statistics']['table']['group']  = t('Content');
 
-  // Provide a relationship for each entity type except comment.
-  foreach ($entities_types as $type => $entity_type) {
-    if ($type == 'comment' || !$entity_type->isFieldable() || !$entity_type->getBaseTable()) {
-      continue;
-    }
-    // This relationship does not use the 'field id' column, if the entity has
-    // multiple comment-fields, then this might introduce duplicates, in which
-    // case the site-builder should enable aggregation and SUM the comment_count
-    // field. We cannot create a relationship from the base table to
-    // {comment_entity_statistics} for each field as multiple joins between
-    // the same two tables is not supported.
-    if (\Drupal::service('comment.manager')->getFields($type)) {
-      $data['comment_entity_statistics']['table']['join'][$entity_type->getBaseTable()] = array(
-        'type' => 'INNER',
-        'left_field' => $entity_type->getKey('id'),
-        'field' => 'entity_id',
-        'extra' => array(
-          array(
-            'field' => 'entity_type',
-            'value' => $type,
-          ),
-        ),
-      );
-    }
-  }
+  // joins
+  $data['node_comment_statistics']['table']['join'] = array(
+    //...to the node table
+    'node' => array(
+      'type' => 'INNER',
+      'left_field' => 'nid',
+      'field' => 'nid',
+     ),
+  );
 
-  $data['comment_entity_statistics']['last_comment_timestamp'] = array(
+  // last_comment_timestamp
+  $data['node_comment_statistics']['last_comment_timestamp'] = array(
     'title' => t('Last comment time'),
     'help' => t('Date and time of when the last comment was posted.'),
     'field' => array(
       'id' => 'comment_last_timestamp',
+      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date',
@@ -487,24 +417,28 @@ function comment_views_data() {
     ),
   );
 
-  $data['comment_entity_statistics']['last_comment_name'] = array(
+  // last_comment_name (author's name)
+  $data['node_comment_statistics']['last_comment_name'] = array(
     'title' => t("Last comment author"),
     'help' => t('The name of the author of the last posted comment.'),
     'field' => array(
-      'id' => 'comment_ces_last_comment_name',
+      'id' => 'comment_ncs_last_comment_name',
+      'click sortable' => TRUE,
       'no group by' => TRUE,
     ),
     'sort' => array(
-      'id' => 'comment_ces_last_comment_name',
+      'id' => 'comment_ncs_last_comment_name',
       'no group by' => TRUE,
     ),
   );
 
-  $data['comment_entity_statistics']['comment_count'] = array(
+  // comment_count
+  $data['node_comment_statistics']['comment_count'] = array(
     'title' => t('Comment count'),
-    'help' => t('The number of comments an entity has.'),
+    'help' => t('The number of comments a node has.'),
     'field' => array(
       'id' => 'numeric',
+      'click sortable' => TRUE,
     ),
     'filter' => array(
       'id' => 'numeric',
@@ -517,28 +451,30 @@ function comment_views_data() {
     ),
   );
 
-  $data['comment_entity_statistics']['last_updated'] = array(
+  // last_comment_timestamp
+  $data['node_comment_statistics']['last_updated'] = array(
     'title' => t('Updated/commented date'),
-    'help' => t('The most recent of last comment posted or entity updated time.'),
+    'help' => t('The most recent of last comment posted or node updated time.'),
     'field' => array(
-      'id' => 'comment_ces_last_updated',
+      'id' => 'comment_ncs_last_updated',
+      'click sortable' => TRUE,
       'no group by' => TRUE,
     ),
     'sort' => array(
-      'id' => 'comment_ces_last_updated',
+      'id' => 'comment_ncs_last_updated',
       'no group by' => TRUE,
     ),
     'filter' => array(
-      'id' => 'comment_ces_last_updated',
+      'id' => 'comment_ncs_last_updated',
     ),
   );
 
-  $data['comment_entity_statistics']['cid'] = array(
+  $data['node_comment_statistics']['cid'] = array(
     'title' => t('Last comment CID'),
-    'help' => t('Display the last comment of an entity'),
+    'help' => t('Display the last comment of a node'),
     'relationship' => array(
-      'title' => t('Last comment'),
-      'help' => t('The last comment of an entity.'),
+      'title' => t('Last Comment'),
+      'help' => t('The last comment of a node.'),
       'group' => t('Comment'),
       'base' => 'comment',
       'base field' => 'cid',
@@ -547,9 +483,10 @@ function comment_views_data() {
     ),
   );
 
-  $data['comment_entity_statistics']['last_comment_uid'] = array(
+  // last_comment_uid
+  $data['node_comment_statistics']['last_comment_uid'] = array(
     'title' => t('Last comment uid'),
-    'help' => t('The User ID of the author of the last comment of an entity.'),
+    'help' => t('The User ID of the author of the last comment of a node.'),
     'relationship' => array(
       'title' => t('Last comment author'),
       'base' => 'users',
@@ -568,48 +505,15 @@ function comment_views_data() {
     ),
   );
 
-  $data['comment_entity_statistics']['entity_type'] = array(
-    'title' => t('Entity type'),
-    'help' => t('The entity type to which the comment is a reply to.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
-    ),
-    'sort' => array(
-      'id' => 'standard',
-    ),
-  );
-  $data['comment_entity_statistics']['field_name'] = array(
-    'title' => t('Comment field name'),
-    'help' => t('The field name from which the comment originated.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
-    ),
-    'sort' => array(
-      'id' => 'standard',
-    ),
-  );
-
   return $data;
 }
 
 /**
- * Implements hook_views_data_alter().
+ * Use views_data_alter to add items to the node table that are
+ * relevant to comments.
  */
 function comment_views_data_alter(&$data) {
-  // New comments are only supported for node table because it requires the
-  // history table.
+  // new comments
   $data['node']['new_comments'] = array(
     'title' => t('New comments'),
     'help' => t('The number of new comments on the node.'),
@@ -619,77 +523,59 @@ function comment_views_data_alter(&$data) {
     ),
   );
 
-  // Provide a integration for each entity type except comment.
-  foreach (\Drupal::entityManager()->getDefinitions() as $entity_type_id => $entity_type) {
-    if ($entity_type_id == 'comment' || !$entity_type->isFieldable() || !$entity_type->getBaseTable()) {
-      continue;
-    }
-    $fields = \Drupal::service('comment.manager')->getFields($entity_type_id);
-    $base_table = $entity_type->getBaseTable();
-    $args = array('@entity_type' => $entity_type_id);
+  $data['node']['comments_link'] = array(
+    'field' => array(
+      'title' => t('Add comment link'),
+      'help' => t('Display the standard add comment link used on regular nodes, which will only display if the viewing user has access to add a comment.'),
+      'id' => 'comment_node_link',
+    ),
+  );
 
-    if ($fields) {
-      $data[$base_table]['comments_link'] = array(
-        'field' => array(
-          'title' => t('Add comment link'),
-          'help' => t('Display the standard add comment link used on regular @entity_type, which will only display if the viewing user has access to add a comment.', $args),
-          'id' => 'comment_entity_link',
-        ),
-      );
+  // Comment status of the node
+  $data['node']['comment'] = array(
+    'title' => t('Comment status'),
+    'help' => t('Whether comments are enabled or disabled on the node.'),
+    'field' => array(
+      'id' => 'node_comment',
+      'click sortable' => TRUE,
+    ),
+    'sort' => array(
+      'id' => 'standard',
+    ),
+    'filter' => array(
+      'id' => 'node_comment',
+    ),
+  );
 
-      if ($entity_type_id == 'node') {
-        // Node properties lives in data_table.
-        $table = $entity_type->getDataTable();
-      }
-      else {
-        $table = $base_table;
-      }
-      $data[$table]['uid_touch'] = array(
-        'title' => t('User posted or commented'),
-        'help' => t('Display nodes only if a user posted the @entity_type or commented on the @entity_type.', $args),
-        'argument' => array(
-          'field' => 'uid',
-          'name table' => 'users',
-          'name field' => 'name',
-          'id' => 'argument_comment_user_uid',
-          'no group by' => TRUE,
-          'entity_type' => $entity_type_id,
-          'entity_id' => $entity_type->getKey('id'),
-        ),
-        'filter' => array(
-          'field' => 'uid',
-          'name table' => 'users',
-          'name field' => 'name',
-          'id' => 'comment_user_uid',
-          'entity_type' => $entity_type_id,
-          'entity_id' => $entity_type->getKey('id'),
-        ),
-      );
+  $data['node']['uid_touch'] = array(
+    'title' => t('User posted or commented'),
+    'help' => t('Display nodes only if a user posted the node or commented on the node.'),
+    'argument' => array(
+      'field' => 'uid',
+      'name table' => 'users',
+      'name field' => 'name',
+      'id' => 'argument_comment_user_uid',
+      'no group by' => TRUE,
+    ),
+    'filter' => array(
+      'field' => 'uid',
+      'name table' => 'users',
+      'name field' => 'name',
+      'id' => 'comment_user_uid',
+    ),
+  );
 
-      foreach ($fields as $field_name => $field) {
-        $data[$base_table][$field_name . '_cid'] = array(
-          'title' => t('Comments of the @entity_type using field: @field_name', $args + array('@field_name' => $field_name)),
-          'help' => t('Relate all comments on the @entity_type. This will create 1 duplicate record for every comment. Usually if you need this it is better to create a comment view.', $args),
-          'relationship' => array(
-            'group' => t('Comment'),
-            'label' => t('Comments'),
-            'base' => 'comment',
-            'base field' => 'entity_id',
-            'relationship field' => $entity_type->getKey('id'),
-            'id' => 'standard',
-            'extra' => array(
-              array(
-                'field' => 'entity_type',
-                'value' => $entity_type_id,
-              ),
-              array(
-                'field' => 'field_name',
-                'value' => $field_name,
-              ),
-            ),
-          ),
-        );
-      }
-    }
-  }
+  $data['node']['cid'] = array(
+    'title' => t('Comments of the node'),
+    'help' => t('Relate all comments on the node. This will create 1 duplicate record for every comment. Usually if you need this it is better to create a comment view.'),
+    'relationship' => array(
+      'group' => t('Comment'),
+      'label' => t('Comments'),
+      'base' => 'comment',
+      'base field' => 'nid',
+      'relationship field' => 'nid',
+      'id' => 'standard',
+    ),
+  );
+
 }

@@ -12,8 +12,8 @@ use Drupal\Component\Gettext\PoHeader;
 /**
  * Methods required for both reader and writer implementations.
  *
- * @see \Drupal\Component\Gettext\PoReaderInterface
- * @see \Drupal\Component\Gettext\PoWriterInterface
+ * @see Drupal\Component\Gettext\PoReaderInterface
+ * @see Drupal\Component\Gettext\PoWriterInterface
  */
 interface PoMetadataInterface {
 
@@ -23,7 +23,7 @@ interface PoMetadataInterface {
    * @param string $langcode
    *   Language code string.
    */
-  public function setLangcode($langcode);
+  function setLangcode($langcode);
 
   /**
    * Get language code.
@@ -31,22 +31,21 @@ interface PoMetadataInterface {
    * @return string
    *   Language code string.
    */
-  public function getLangcode();
+  function getLangcode();
 
   /**
    * Set header metadata.
    *
-   * @param \Drupal\Component\Gettext\PoHeader $header
+   * @param Drupal\Component\Gettext\PoHeader $header
    *   Header object representing metadata in a PO header.
    */
-  public function setHeader(PoHeader $header);
+  function setHeader(PoHeader $header);
 
   /**
    * Get header metadata.
    *
-   * @return \Drupal\Component\Gettext\PoHeader $header
+   * @return Drupal\Component\Gettext\PoHeader $header
    *   Header instance representing metadata in a PO header.
    */
-  public function getHeader();
-
+  function getHeader();
 }

@@ -7,10 +7,12 @@
 
 namespace Drupal\Core\Database\Driver\sqlite;
 
-use Drupal\Component\Utility\String;
 use Drupal\Core\Database\SchemaObjectExistsException;
 use Drupal\Core\Database\SchemaObjectDoesNotExistException;
 use Drupal\Core\Database\Schema as DatabaseSchema;
+
+use Exception;
+
 
 /**
  * @ingroup schemaapi
@@ -179,7 +181,7 @@ class Schema extends DatabaseSchema {
 
       if (isset($spec['default'])) {
         if (is_string($spec['default'])) {
-          $spec['default'] = $this->connection->quote($spec['default']);
+          $spec['default'] = "'" . $spec['default'] . "'";
         }
         $sql .= ' DEFAULT ' . $spec['default'];
       }
@@ -238,7 +240,7 @@ class Schema extends DatabaseSchema {
 
   public function renameTable($table, $new_name) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot rename @table to @table_new: table @table doesn't exist.", array('@table' => $table, '@table_new' => $new_name)));
+      throw new SchemaObjectDoesNotExistException(t("Cannot @ename @table to @table_new: table @table doesn't exist.", array('@table' => $table, '@table_new' => $new_name)));
     }
     if ($this->tableExists($new_name)) {
       throw new SchemaObjectExistsException(t("Cannot rename @table to @table_new: table @table_new already exists.", array('@table' => $table, '@table_new' => $new_name)));
@@ -271,20 +273,6 @@ class Schema extends DatabaseSchema {
     foreach ($statements as $statement) {
       $this->connection->query($statement);
     }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function copyTable($source, $destination) {
-    if (!$this->tableExists($source)) {
-      throw new SchemaObjectDoesNotExistException(String::format("Cannot copy @source to @destination: table @source doesn't exist.", array('@source' => $source, '@destination' => $destination)));
-    }
-    if ($this->tableExists($destination)) {
-      throw new SchemaObjectExistsException(String::format("Cannot copy @source to @destination: table @destination already exists.", array('@source' => $source, '@destination' => $destination)));
-    }
-
-    $this->createTable($destination, $this->introspectSchema($source));
   }
 
   public function dropTable($table) {
@@ -463,7 +451,7 @@ class Schema extends DatabaseSchema {
         }
       }
       else {
-        new \Exception("Unable to parse the column type " . $row->type);
+        new Exception("Unable to parse the column type " . $row->type);
       }
     }
     $indexes = array();

@@ -3,7 +3,7 @@
 /*
  * This file is part of the Assetic package, an OpenSky project.
  *
- * (c) 2010-2013 OpenSky Project Inc
+ * (c) 2010-2012 OpenSky Project Inc
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,8 +11,9 @@
 
 namespace Assetic\Asset;
 
+use Assetic\Util\PathUtils;
+
 use Assetic\Filter\FilterInterface;
-use Assetic\Util\VarUtils;
 
 /**
  * Represents an asset loaded via an HTTP request.
@@ -27,10 +28,8 @@ class HttpAsset extends BaseAsset
     /**
      * Constructor.
      *
-     * @param string  $sourceUrl    The source URL
-     * @param array   $filters      An array of filters
-     * @param Boolean $ignoreErrors
-     * @param array   $vars
+     * @param string $sourceUrl The source URL
+     * @param array  $filters   An array of filters
      *
      * @throws \InvalidArgumentException If the first argument is not an URL
      */
@@ -53,12 +52,13 @@ class HttpAsset extends BaseAsset
 
     public function load(FilterInterface $additionalFilter = null)
     {
-        $content = @file_get_contents(
-            VarUtils::resolve($this->sourceUrl, $this->getVars(), $this->getValues())
-        );
-
-        if (false === $content && !$this->ignoreErrors) {
-            throw new \RuntimeException(sprintf('Unable to load asset from URL "%s"', $this->sourceUrl));
+        if (false === $content = @file_get_contents(PathUtils::resolvePath(
+                $this->sourceUrl, $this->getVars(), $this->getValues()))) {
+            if ($this->ignoreErrors) {
+                return;
+            } else {
+                throw new \RuntimeException(sprintf('Unable to load asset from URL "%s"', $this->sourceUrl));
+            }
         }
 
         $this->doLoad($content, $additionalFilter);

@@ -32,8 +32,7 @@ function statistics_token_info() {
  * Implements hook_tokens().
  */
 function statistics_tokens($type, $tokens, array $data = array(), array $options = array()) {
-  $token_service = \Drupal::token();
-
+  $url_options = array('absolute' => TRUE);
   $replacements = array();
 
   if ($type == 'node' & !empty($data['node'])) {
@@ -41,22 +40,22 @@ function statistics_tokens($type, $tokens, array $data = array(), array $options
 
     foreach ($tokens as $name => $original) {
       if ($name == 'total-count') {
-        $statistics = statistics_get($node->id());
+        $statistics = statistics_get($node->nid);
         $replacements[$original] = $statistics['totalcount'];
       }
       elseif ($name == 'day-count') {
-        $statistics = statistics_get($node->id());
+        $statistics = statistics_get($node->nid);
         $replacements[$original] = $statistics['daycount'];
       }
       elseif ($name == 'last-view') {
-        $statistics = statistics_get($node->id());
+        $statistics = statistics_get($node->nid);
         $replacements[$original] = format_date($statistics['timestamp']);
       }
     }
 
-    if ($created_tokens = $token_service->findWithPrefix($tokens, 'last-view')) {
-      $statistics = statistics_get($node->id());
-      $replacements += $token_service->generate('date', $created_tokens, array('date' => $statistics['timestamp']), $options);
+    if ($created_tokens = token_find_with_prefix($tokens, 'last-view')) {
+      $statistics = statistics_get($node->nid);
+      $replacements += token_generate('date', $created_tokens, array('date' => $statistics['timestamp']), $options);
     }
   }
 

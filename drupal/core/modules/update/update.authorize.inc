@@ -31,7 +31,7 @@ use Drupal\Core\Updater\UpdaterException;
  */
 function update_authorize_run_update($filetransfer, $projects) {
   $operations = array();
-  foreach ($projects as $project_info) {
+  foreach ($projects as $project => $project_info) {
     $operations[] = array(
       'update_authorize_batch_copy_project',
       array(
@@ -53,7 +53,7 @@ function update_authorize_run_update($filetransfer, $projects) {
 
   batch_set($batch);
   // Invoke the batch via authorize.php.
-  return system_authorized_batch_process();
+  system_authorized_batch_process();
 }
 
 /**
@@ -98,7 +98,7 @@ function update_authorize_run_install($filetransfer, $project, $updater_name, $l
   batch_set($batch);
 
   // Invoke the batch via authorize.php.
-  return system_authorized_batch_process();
+  system_authorized_batch_process();
 }
 
 /**
@@ -178,7 +178,7 @@ function update_authorize_batch_copy_project($project, $updater_name, $local_url
  *
  * This processes the results and stashes them into SESSION such that
  * authorize.php will render a report. Also responsible for putting the site
- * back online and clearing the update status storage after a successful update.
+ * back online and clearing the update status cache after a successful update.
  *
  * @param $success
  *   TRUE if the batch operation was successful; FALSE if there were errors.
@@ -186,20 +186,20 @@ function update_authorize_batch_copy_project($project, $updater_name, $local_url
  *   An associative array of results from the batch operation.
  */
 function update_authorize_update_batch_finished($success, $results) {
-  foreach ($results['log'] as $messages) {
+  foreach ($results['log'] as $project => $messages) {
     if (!empty($messages['#abort'])) {
       $success = FALSE;
     }
   }
-  $offline = \Drupal::state()->get('system.maintenance_mode');
+  $offline = config('system.maintenance')->get('enabled');
   if ($success) {
-    // Now that the update completed, we need to clear the available update data
-    // and recompute our status, so prevent show bogus results.
+    // Now that the update completed, we need to clear the cache of available
+    // update data and recompute our status, so prevent show bogus results.
     _update_authorize_clear_update_status();
 
     // Take the site out of maintenance mode if it was previously that way.
     if ($offline && isset($_SESSION['maintenance_mode']) && $_SESSION['maintenance_mode'] == FALSE) {
-      \Drupal::state()->set('system.maintenance_mode', FALSE);
+      config('system.maintenance')->set('enabled', FALSE)->save();
       $page_message = array(
         'message' => t('Update was completed successfully. Your site has been taken out of maintenance mode.'),
         'type' => 'status',
@@ -237,6 +237,7 @@ function update_authorize_update_batch_finished($success, $results) {
   $_SESSION['authorize_results']['page_message'] = $page_message;
   $_SESSION['authorize_results']['messages'] = $results['log'];
   $_SESSION['authorize_results']['tasks'] = $results['tasks'];
+  $_SESSION['authorize_operation']['page_title'] = t('Update manager');
 }
 
 /**
@@ -252,16 +253,16 @@ function update_authorize_update_batch_finished($success, $results) {
  *   An associative array of results from the batch operation.
  */
 function update_authorize_install_batch_finished($success, $results) {
-  foreach ($results['log'] as $messages) {
+  foreach ($results['log'] as $project => $messages) {
     if (!empty($messages['#abort'])) {
       $success = FALSE;
     }
   }
-  $offline = \Drupal::state()->get('system.maintenance_mode');
+  $offline = config('system.maintenance')->get('enabled');
   if ($success) {
     // Take the site out of maintenance mode if it was previously that way.
     if ($offline && isset($_SESSION['maintenance_mode']) && $_SESSION['maintenance_mode'] == FALSE) {
-      \Drupal::state()->set('system.maintenance_mode', FALSE);
+      config('system.maintenance')->set('enabled', FALSE)->save();
       $page_message = array(
         'message' => t('Installation was completed successfully. Your site has been taken out of maintenance mode.'),
         'type' => 'status',
@@ -295,6 +296,7 @@ function update_authorize_install_batch_finished($success, $results) {
   $_SESSION['authorize_results']['page_message'] = $page_message;
   $_SESSION['authorize_results']['messages'] = $results['log'];
   $_SESSION['authorize_results']['tasks'] = $results['tasks'];
+  $_SESSION['authorize_operation']['page_title'] = t('Update manager');
 }
 
 /**
@@ -313,19 +315,25 @@ function _update_batch_create_message(&$project_results, $message, $success = TR
 }
 
 /**
- * Clears available update status data.
+ * Clears cached available update status data.
  *
  * Since this function is run at such a low bootstrap level, the Update Manager
- * module is not loaded. So, we can't just call update_storage_clear(). However,
- * the key-value backend is available, so we just call that.
+ * module is not loaded. So, we can't just call _update_cache_clear(). However,
+ * the database is bootstrapped, so we can do a query ourselves to clear out
+ * what we want to clear.
  *
- * Note that we do not want to delete  items related to currently pending fetch
- * attempts.
+ * Note that we do not want to just truncate the table, since that would remove
+ * items related to currently pending fetch attempts.
  *
  * @see update_authorize_update_batch_finished()
- * @see update_storage_clear()
+ * @see _update_cache_clear()
  */
 function _update_authorize_clear_update_status() {
-  \Drupal::keyValueExpirable('update')->deleteAll();
-  \Drupal::keyValueExpirable('update_available_release')->deleteAll();
+  $query = db_delete('cache_update');
+  $query->condition(
+    db_or()
+    ->condition('cid', 'update_project_%', 'LIKE')
+    ->condition('cid', 'available_releases::%', 'LIKE')
+  );
+  $query->execute();
 }

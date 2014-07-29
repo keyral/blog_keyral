@@ -32,16 +32,16 @@ class Select extends QuerySelect {
    * yet selected.
    *
    * @code
-   *   $query = db_select('example', 'e');
-   *   $query->join('example_revision', 'er', 'e.vid = er.vid');
+   *   $query = db_select('node', 'n');
+   *   $query->join('node_revision', 'nr', 'n.vid = nr.vid');
    *   $query
    *     ->distinct()
-   *     ->fields('e')
+   *     ->fields('n')
    *     ->orderBy('timestamp');
    * @endcode
    *
    * In this query, it is not possible (without relying on the schema) to know
-   * whether timestamp belongs to example_revision and needs to be added or
+   * whether timestamp belongs to node_revisions and needs to be added or
    * belongs to node and is already selected. Queries like this will need to be
    * corrected in the original query by adding an explicit call to
    * SelectQuery::addField() or SelectQuery::fields().
@@ -54,10 +54,6 @@ class Select extends QuerySelect {
   public function orderBy($field, $direction = 'ASC') {
     // Call parent function to order on this.
     $return = parent::orderBy($field, $direction);
-    
-    if ($this->hasTag('entity_query')) {
-      return $return;
-    }
 
     // If there is a table alias specified, split it up.
     if (strpos($field, '.') !== FALSE) {

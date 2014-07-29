@@ -9,16 +9,18 @@
  * file that was distributed with this source code.
  */
 
-class Twig_Tests_Node_ImportTest extends Twig_Test_NodeTestCase
+require_once dirname(__FILE__).'/TestCase.php';
+
+class Twig_Tests_Node_ImportTest extends Twig_Tests_Node_TestCase
 {
     /**
      * @covers Twig_Node_Import::__construct
      */
     public function testConstructor()
     {
-        $macro = new Twig_Node_Expression_Constant('foo.twig', 1);
-        $var = new Twig_Node_Expression_AssignName('macro', 1);
-        $node = new Twig_Node_Import($macro, $var, 1);
+        $macro = new Twig_Node_Expression_Constant('foo.twig', 0);
+        $var = new Twig_Node_Expression_AssignName('macro', 0);
+        $node = new Twig_Node_Import($macro, $var, 0);
 
         $this->assertEquals($macro, $node->getNode('expr'));
         $this->assertEquals($var, $node->getNode('var'));
@@ -37,15 +39,11 @@ class Twig_Tests_Node_ImportTest extends Twig_Test_NodeTestCase
     {
         $tests = array();
 
-        $macro = new Twig_Node_Expression_Constant('foo.twig', 1);
-        $var = new Twig_Node_Expression_AssignName('macro', 1);
-        $node = new Twig_Node_Import($macro, $var, 1);
+        $macro = new Twig_Node_Expression_Constant('foo.twig', 0);
+        $var = new Twig_Node_Expression_AssignName('macro', 0);
+        $node = new Twig_Node_Import($macro, $var, 0);
 
-        $tests[] = array($node, <<<EOF
-// line 1
-\$context["macro"] = \$this->env->loadTemplate("foo.twig");
-EOF
-        );
+        $tests[] = array($node, '$context["macro"] = $this->env->loadTemplate("foo.twig");');
 
         return $tests;
     }

@@ -15,7 +15,7 @@ Imagine we have a helper module that renders forms (called ``forms.html``):
         <input type="{{ type|default('text') }}" name="{{ name }}" value="{{ value|e }}" size="{{ size|default(20) }}" />
     {% endmacro %}
 
-    {% macro textarea(name, value, rows, cols) %}
+    {% macro textarea(name, value, rows) %}
         <textarea name="{{ name }}" rows="{{ rows|default(10) }}" cols="{{ cols|default(40) }}">{{ value|e }}</textarea>
     {% endmacro %}
 
@@ -49,9 +49,31 @@ namespace:
     </dl>
     <p>{{ textarea('comment') }}</p>
 
-.. tip::
+Importing is not needed if the macros and the template are defined in the same
+file; use the special ``_self`` variable instead:
 
-    To import macros from the current file, use the special ``_self`` variable
-    for the source.
+.. code-block:: jinja
+
+    {# index.html template #}
+
+    {% macro textarea(name, value, rows) %}
+        <textarea name="{{ name }}" rows="{{ rows|default(10) }}" cols="{{ cols|default(40) }}">{{ value|e }}</textarea>
+    {% endmacro %}
+
+    <p>{{ _self.textarea('comment') }}</p>
+
+But you can still create an alias by importing from the ``_self`` variable:
+
+.. code-block:: jinja
+
+    {# index.html template #}
+
+    {% macro textarea(name, value, rows) %}
+        <textarea name="{{ name }}" rows="{{ rows|default(10) }}" cols="{{ cols|default(40) }}">{{ value|e }}</textarea>
+    {% endmacro %}
+
+    {% import _self as forms %}
+
+    <p>{{ forms.textarea('comment') }}</p>
 
 .. seealso:: :doc:`macro<../tags/macro>`, :doc:`from<../tags/from>`

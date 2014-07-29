@@ -26,13 +26,13 @@ class KernelEvent extends Event
 {
     /**
      * The kernel in which this event was thrown
-     * @var HttpKernelInterface
+     * @var Symfony\Component\HttpKernel\HttpKernelInterface
      */
     private $kernel;
 
     /**
      * The request the kernel is currently processing
-     * @var Request
+     * @var Symfony\Component\HttpFoundation\Request
      */
     private $request;
 
@@ -53,7 +53,7 @@ class KernelEvent extends Event
     /**
      * Returns the kernel in which this event was thrown
      *
-     * @return HttpKernelInterface
+     * @return Symfony\Component\HttpKernel\HttpKernelInterface
      *
      * @api
      */
@@ -65,7 +65,7 @@ class KernelEvent extends Event
     /**
      * Returns the request the kernel is currently processing
      *
-     * @return Request
+     * @return Symfony\Component\HttpFoundation\Request
      *
      * @api
      */
@@ -85,17 +85,5 @@ class KernelEvent extends Event
     public function getRequestType()
     {
         return $this->requestType;
-    }
-
-    /**
-     * Checks if this is a master request.
-     *
-     * @return Boolean True if the request is a master request
-     *
-     * @api
-     */
-    public function isMasterRequest()
-    {
-        return HttpKernelInterface::MASTER_REQUEST === $this->requestType;
     }
 }

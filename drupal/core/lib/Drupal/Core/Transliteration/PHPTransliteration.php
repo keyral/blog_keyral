@@ -13,7 +13,6 @@ use Drupal\Component\Transliteration\PHPTransliteration as BaseTransliteration;
  * Enhances PHPTransliteration with an alter hook.
  *
  * @ingroup transliteration
- * @see hook_transliteration_overrides_alter()
  */
 class PHPTransliteration extends BaseTransliteration {
 
@@ -27,7 +26,7 @@ class PHPTransliteration extends BaseTransliteration {
     parent::readLanguageOverrides($langcode);
 
     // Let modules alter the language-specific overrides.
-    \Drupal::moduleHandler()->alter('transliteration_overrides', $this->languageOverrides[$langcode], $langcode);
+    drupal_alter('transliteration_overrides', $this->languageOverrides[$langcode], $langcode);
   }
 
 }

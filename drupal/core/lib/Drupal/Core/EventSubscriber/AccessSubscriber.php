@@ -7,14 +7,12 @@
 
 namespace Drupal\Core\EventSubscriber;
 
-use Drupal\Core\Access\AccessManager;
-use Drupal\Core\Session\AccountInterface;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Drupal\Core\Routing\RoutingEvents;
+use Drupal\Core\Access\AccessManager;
+use Drupal\Core\Routing\RouteBuildEvent;
 
 /**
  * Access subscriber for controller requests.
@@ -22,31 +20,14 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 class AccessSubscriber implements EventSubscriberInterface {
 
   /**
-   * The current user.
-   *
-   * @var \Drupal\Core\Session\AccountInterface
-   */
-  protected $currentUser;
-
-  /**
-   * The access manager.
-   *
-   * @var \Drupal\Core\Access\AccessManager
-   */
-  protected $accessManager;
-
-  /**
    * Constructs a new AccessSubscriber.
    *
    * @param \Drupal\Core\Access\AccessManager $access_manager
    *   The access check manager that will be responsible for applying
    *   AccessCheckers against routes.
-   * @param \Drupal\Core\Session\AccountInterface $current_user
-   *   The current user.
    */
-  public function __construct(AccessManager $access_manager, AccountInterface $current_user) {
+  public function __construct(AccessManager $access_manager) {
     $this->accessManager = $access_manager;
-    $this->currentUser = $current_user;
   }
 
   /**
@@ -54,48 +35,26 @@ class AccessSubscriber implements EventSubscriberInterface {
    *
    * @param \Symfony\Component\HttpKernel\Event\GetResponseEvent $event
    *   The Event to process.
-   *
-   * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
-   *   Thrown when the access got denied.
    */
   public function onKernelRequestAccessCheck(GetResponseEvent $event) {
     $request = $event->getRequest();
-
-    // The controller is being handled by the HTTP kernel, so add an attribute
-    // to tell us this is the controller request.
-    $request->attributes->set('_controller_request', TRUE);
-
-    if (!$request->attributes->has(RouteObjectInterface::ROUTE_OBJECT)) {
+    if (!$request->attributes->has('_route')) {
       // If no Route is available it is likely a static resource and access is
       // handled elsewhere.
       return;
     }
 
-    // Wrap this in a try/catch to ensure the '_controller_request' attribute
-    // can always be removed.
-    try {
-      $access = $this->accessManager->check($request->attributes->get(RouteObjectInterface::ROUTE_OBJECT), $request, $this->currentUser);
-    }
-    catch (\Exception $e) {
-      $request->attributes->remove('_controller_request');
-      throw $e;
-    }
-
-    $request->attributes->remove('_controller_request');
-
-    if (!$access) {
-      throw new AccessDeniedHttpException();
-    }
+    $this->accessManager->check($request->attributes->get('_route'));
   }
 
   /**
-   * Sets the current user.
+   * Apply access checks to routes.
    *
-   * @param \Drupal\Core\Session\AccountInterface|null $current_user
-   *  The current user service.
+   * @param \Drupal\Core\Routing\RouteBuildEvent $event
+   *   The event to process.
    */
-  public function setCurrentUser(AccountInterface $current_user = NULL) {
-    $this->currentUser = $current_user;
+  public function onRoutingRouteAlterSetAccessCheck(RouteBuildEvent $event) {
+    $this->accessManager->setChecks($event->getRouteCollection());
   }
 
   /**
@@ -106,8 +65,9 @@ class AccessSubscriber implements EventSubscriberInterface {
    */
   static function getSubscribedEvents() {
     $events[KernelEvents::REQUEST][] = array('onKernelRequestAccessCheck', 30);
+    // Setting very low priority to ensure access checks are run after alters.
+    $events[RoutingEvents::ALTER][] = array('onRoutingRouteAlterSetAccessCheck', 0);
 
     return $events;
   }
-
 }

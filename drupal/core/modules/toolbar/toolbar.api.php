@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Hooks provided by the toolbar module.
+ * Hooks provided by the Toolbar module.
  */
 
 /**
@@ -11,145 +11,82 @@
  */
 
 /**
- * Add items to the toolbar menu.
+ * Add items to the Toolbar menu.
  *
- * The toolbar is a container for administrative and site-global interactive
- * components.
+ * The Toolbar has two parts. The tabs are menu links, rendered by
+ * theme_links(), that are displayed if the module is enabled and the user has
+ * the 'access toolbar' permission. The trays are render elements, usually lists
+ * of links, and each tray corresponds to a tab. When a tab is activated, the
+ * corresponding tray is displayed; only one tab can be activated at a time. If
+ * a tab does not have a corresponding tray, or if javascript is disabled, then
+ * the tab is simply a link.
  *
- * The toolbar provides a common styling for items denoted by the
- * .toolbar-tab class.
- *
- * The toolbar provides a construct called a 'tray'. The tray is a container
- * for content. The tray may be associated with a toggle in the administration
- * bar. The toggle shows or hides the tray and is optimized for small and
- * large screens. To create this association, hook_toolbar() returns one or
- * more render elements of type 'toolbar_item', containing the toggle and tray
- * elements in its 'tab' and 'tray' properties.
- *
- * The following properties are available:
- *   - 'tab': A renderable array.
- *   - 'tray': Optional. A renderable array.
- *   - '#weight': Optional. Integer weight used for sorting toolbar items in
- *     administration bar area.
- *
- * This hook is invoked in toolbar_pre_render().
+ * This hook is invoked in toolbar_view().
  *
  * @return
  *   An array of toolbar items, keyed by unique identifiers such as 'home' or
  *   'administration', or the short name of the module implementing the hook.
- *   The corresponding value is a render element of type 'toolbar_item'.
+ *   The corresponding value is an associative array that may contain the
+ *   following key-value pairs:
+ *   - 'tab': Required, unless the item is adding links to an existing tab. An
+ *   array with keys 'title', 'href', 'html', and 'attributes', as used by
+ *   theme_links(). The 'href' value is ignored unless 'tray' (below) is
+ *   omitted, or if javascript is disabled.
+ *   - 'tray': Optional. A render element that is displayed when the tab is
+ *     activated.
+ *   - 'weight': Optional. Integer weight used for sorting tabs.
  *
- * @see toolbar_pre_render()
+ * @see toolbar_view()
  * @ingroup toolbar_tabs
  */
 function hook_toolbar() {
   $items = array();
 
-  // Add a search field to the toolbar. The search field employs no toolbar
-  // module theming functions.
-  $items['global_search'] = array(
-    '#type' => 'toolbar_item',
-    'tab' => array(
-      '#type' => 'search',
-      '#attributes' => array(
-        'placeholder' => t('Search the site'),
-        'class' => array('search-global'),
-      ),
-    ),
-    '#weight' => 200,
-    // Custom CSS, JS or a library can be associated with the toolbar item.
-    '#attached' => array(
-      'css' => array(
-        drupal_get_path('module', 'search') . '/css/search.base.css',
-      ),
-    ),
-  );
-
-  // The 'Home' tab is a simple link, which is wrapped in markup associated
-  // with a visual tab styling.
+  // The 'Home' tab is a simple link, with no corresponding tray.
   $items['home'] = array(
-    '#type' => 'toolbar_item',
     'tab' => array(
-      '#type' => 'link',
-      '#title' => t('Home'),
-      '#href' => '<front>',
-      '#options' => array(
-        'attributes' => array(
-          'title' => t('Home page'),
-          'class' => array('toolbar-icon', 'toolbar-icon-home'),
-        ),
+      'title' => t('Home'),
+      'href' => '<front>',
+      'html' => FALSE,
+      'attributes' => array(
+        'title' => t('Home page'),
       ),
     ),
-    '#weight' => -20,
+    'weight' => -10,
   );
 
-  // A tray may be associated with a tab.
-  //
-  // When the tab is activated, the tray will become visible, either in a
-  // horizontal or vertical orientation on the screen.
-  //
-  // The tray should contain a renderable array. An optional #heading property
-  // can be passed. This text is written to a heading tag in the tray as a
-  // landmark for accessibility.
+  /**
+   * A tab may be associated with a tray.
+   *
+   * The tray should contain a renderable array. An option #heading property
+   * can be passed. The text is written to a heading tag in the tray as a
+   * landmark for accessibility. A default heading will be created if one is not
+   * passed.
+   */
   $items['commerce'] = array(
-    '#type' => 'toolbar_item',
     'tab' => array(
-      '#type' => 'link',
-      '#title' => t('Shopping cart'),
-      '#href' => '/cart',
-      '#options' => array(
-        'html' => FALSE,
-        'attributes' => array(
-          'title' => t('Shopping cart'),
-        ),
+      'title' => t('Shopping cart'),
+      'href' => '',
+      'html' => FALSE,
+      'attributes' => array(
+        'title' => t('Shopping cart'),
       ),
     ),
     'tray' => array(
       '#heading' => t('Shopping cart actions'),
-      'shopping_cart' => array(
+      'content' => array(
         '#theme' => 'item_list',
         '#items' => array( /* An item list renderable array */ ),
       ),
     ),
-    '#weight' => 150,
-  );
-
-  // The tray can be used to render arbritrary content.
-  //
-  // A renderable array passed to the 'tray' property will be rendered outside
-  // the administration bar but within the containing toolbar element.
-  //
-  // If the default behavior and styling of a toolbar tray is not desired, one
-  // can render content to the toolbar element and apply custom theming and
-  // behaviors.
-  $items['user_messages'] = array(
-    // Include the toolbar_tab_wrapper to style the link like a toolbar tab.
-    // Exclude the theme wrapper if custom styling is desired.
-    '#type' => 'toolbar_item',
-    'tab' => array(
-      '#type' => 'link',
-      '#theme' => 'user_message_toolbar_tab',
-      '#theme_wrappers' => array(),
-      '#title' => t('Messages'),
-      '#href' => '/user/messages',
-      '#options' => array(
-        'attributes' => array(
-          'title' => t('Messages'),
-        ),
-      ),
-    ),
-    'tray' => array(
-      '#heading' => t('User messages'),
-      'messages' => array(/* renderable content */),
-    ),
-    '#weight' => 125,
+    'weight' => 50,
   );
 
   return $items;
 }
 
 /**
- * Alter the toolbar menu after hook_toolbar() is invoked.
+ * Alter the Toolbar menu after hook_toolbar() is invoked.
  *
  * This hook is invoked by toolbar_view() immediately after hook_toolbar(). The
  * toolbar definitions are passed in by reference. Each element of the $items
@@ -157,11 +94,11 @@ function hook_toolbar() {
  * may be added, or existing items altered.
  *
  * @param $items
- *   Associative array of toolbar menu definitions returned from hook_toolbar().
+ *   Associative array of Toolbar menu definitions returned from hook_toolbar().
  */
 function hook_toolbar_alter(&$items) {
   // Move the User tab to the right.
-  $items['commerce']['#weight'] = 5;
+  $items['commerce']['weight'] = 5;
 }
 
 /**

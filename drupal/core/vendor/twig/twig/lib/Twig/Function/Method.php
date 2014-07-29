@@ -13,10 +13,8 @@
 /**
  * Represents a method template function.
  *
- * Use Twig_SimpleFunction instead.
- *
- * @author Arnaud Le Blanc <arnaud.lb@gmail.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package    twig
+ * @author     Arnaud Le Blanc <arnaud.lb@gmail.com>
  */
 class Twig_Function_Method extends Twig_Function
 {
@@ -25,8 +23,6 @@ class Twig_Function_Method extends Twig_Function
 
     public function __construct(Twig_ExtensionInterface $extension, $method, array $options = array())
     {
-        $options['callable'] = array($extension, $method);
-
         parent::__construct($options);
 
         $this->extension = $extension;

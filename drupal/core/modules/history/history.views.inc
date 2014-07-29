@@ -2,7 +2,9 @@
 
 /**
  * @file
- * Provide views data for history.module.
+ * Provide views data and handlers for history.module.
+ *
+ * @ingroup views_module_handlers
  */
 
 /**
@@ -32,12 +34,12 @@ function history_views_data() {
   $data['history']['timestamp'] = array(
     'title' => t('Has new content'),
     'field' => array(
-      'id' => 'history_user_timestamp',
+      'id' => 'node_history_user_timestamp',
       'help' => t('Show a marker if the content is new or updated.'),
     ),
     'filter' => array(
       'help' => t('Show only content that is new or updated.'),
-      'id' => 'history_user_timestamp',
+      'id' => 'node_history_user_timestamp',
     ),
   );
 

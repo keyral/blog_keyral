@@ -8,12 +8,11 @@
 namespace Drupal\Core\Routing;
 
 use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\CompiledRoute as SymfonyCompiledRoute;
 
 /**
- * A compiled route contains derived information from a route object.
+ * Description of CompiledRoute
  */
-class CompiledRoute extends SymfonyCompiledRoute {
+class CompiledRoute {
 
   /**
    * The fitness of this route.
@@ -39,17 +38,19 @@ class CompiledRoute extends SymfonyCompiledRoute {
   /**
    * The Route object of which this object is the compiled version.
    *
-   * @var \Symfony\Component\Routing\Route
+   * @var Symfony\Component\Routing\Route
    */
   protected $route;
 
   /**
-   * Constructs a new compiled route object.
+   * The regular expression to match placeholders out of this path.
    *
-   * This is a ridiculously long set of constructor parameters, but as this
-   * object is little more than a collection of values it's not a serious
-   * problem. The parent Symfony class does the same, as well, making it
-   * difficult to override differently.
+   * @var string
+   */
+  protected $regex;
+
+  /**
+   * Constructs a new CompiledRoute object.
    *
    * @param \Symfony\Component\Routing\Route $route
    *   A original Route instance.
@@ -59,30 +60,15 @@ class CompiledRoute extends SymfonyCompiledRoute {
    *   The pattern outline for this route.
    * @param int $num_parts
    *   The number of parts in the path.
-   * @param string $staticPrefix
-   *   The static prefix of the compiled route
    * @param string $regex
-   *   The regular expression to use to match this route
-   * @param array $tokens
-   *   An array of tokens to use to generate URL for this route
-   * @param array $pathVariables
-   *   An array of path variables
-   * @param string|null $hostRegex
-   *   Host regex
-   * @param array $hostTokens
-   *   Host tokens
-   * @param array $hostVariables
-   *   An array of host variables
-   * @param array $variables
-   *   An array of variables (variables defined in the path and in the host patterns)
+   *   The regular expression to match placeholders out of this path.
    */
-  public function __construct(Route $route, $fit, $pattern_outline, $num_parts, $staticPrefix, $regex, array $tokens, array $pathVariables, $hostRegex = null, array $hostTokens = array(), array $hostVariables = array(), array $variables = array()) {
-    parent::__construct($staticPrefix, $regex, $tokens, $pathVariables, $hostRegex, $hostTokens, $hostVariables, $variables);
-
+  public function __construct(Route $route, $fit, $pattern_outline, $num_parts, $regex) {
     $this->route = $route;
     $this->fit = $fit;
     $this->patternOutline = $pattern_outline;
     $this->numParts = $num_parts;
+    $this->regex = $regex;
   }
 
   /**
@@ -124,6 +110,16 @@ class CompiledRoute extends SymfonyCompiledRoute {
   }
 
   /**
+   * Returns the placeholder regex.
+   *
+   * @return string
+   *   The regex to locate placeholders in this pattern.
+   */
+  public function getRegex() {
+    return $this->regex;
+  }
+
+  /**
    * Returns the Route instance.
    *
    * @return Route
@@ -134,13 +130,13 @@ class CompiledRoute extends SymfonyCompiledRoute {
   }
 
   /**
-   * Returns the path.
+   * Returns the pattern.
    *
    * @return string
-   *   The path.
+   *   The pattern.
    */
-  public function getPath() {
-    return $this->route->getPath();
+  public function getPattern() {
+    return $this->route->getPattern();
   }
 
   /**

@@ -21,9 +21,4 @@ and end of a string:
 
     Internally, Twig uses the PHP `trim`_ function.
 
-Arguments
----------
-
-* ``character_mask``: The characters to strip
-
 .. _`trim`: http://php.net/trim

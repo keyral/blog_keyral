@@ -19,6 +19,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ConfigDataCollectorTest extends \PHPUnit_Framework_TestCase
 {
+    protected function setUp()
+    {
+        if (!class_exists('Symfony\Component\HttpFoundation\Request')) {
+            $this->markTestSkipped('The "HttpFoundation" component is not available');
+        }
+    }
+
     public function testCollect()
     {
         $kernel = new KernelForTest('test', true);
@@ -46,11 +53,7 @@ class ConfigDataCollectorTest extends \PHPUnit_Framework_TestCase
                 ||
                 (extension_loaded('apc') && ini_get('apc.enabled'))
                 ||
-                (extension_loaded('Zend OPcache') && ini_get('opcache.enable'))
-                ||
-                (extension_loaded('xcache') && ini_get('xcache.cacher'))
-                ||
-                (extension_loaded('wincache') && ini_get('wincache.ocenabled')))) {
+                (extension_loaded('xcache') && ini_get('xcache.cacher')))) {
             $this->assertTrue($c->hasAccelerator());
         } else {
             $this->assertFalse($c->hasAccelerator());

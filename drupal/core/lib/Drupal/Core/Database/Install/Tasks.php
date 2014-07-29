@@ -9,19 +9,15 @@ namespace Drupal\Core\Database\Install;
 
 use Drupal\Core\Database\Database;
 
+use PDO;
+use Exception;
+
 /**
  * Database installer structure.
  *
  * Defines basic Drupal requirements for databases.
  */
 abstract class Tasks {
-
-  /**
-   * The name of the PDO driver this database type requires.
-   *
-   * @var string
-   */
-  protected $pdoDriver;
 
   /**
    * Structure that describes each task to run.
@@ -85,7 +81,7 @@ abstract class Tasks {
    * Ensure the PDO driver is supported by the version of PHP in use.
    */
   protected function hasPdoDriver() {
-    return in_array($this->pdoDriver, \PDO::getAvailableDrivers());
+    return in_array($this->pdoDriver, PDO::getAvailableDrivers());
   }
 
   /**
@@ -142,7 +138,7 @@ abstract class Tasks {
           }
         }
         else {
-          throw new TaskException(t("Failed to run all tasks against the database server. The task %task wasn't found.", array('%task' => $task['function'])));
+          throw new TaskException(st("Failed to run all tasks against the database server. The task %task wasn't found.", array('%task' => $task['function'])));
         }
       }
     }
@@ -170,8 +166,8 @@ abstract class Tasks {
       Database::getConnection();
       $this->pass('Drupal can CONNECT to the database ok.');
     }
-    catch (\Exception $e) {
-      $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist, and have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', array('%error' => $e->getMessage())));
+    catch (Exception $e) {
+      $this->fail(st('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist, and have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', array('%error' => $e->getMessage())));
       return FALSE;
     }
     return TRUE;
@@ -183,10 +179,10 @@ abstract class Tasks {
   protected function runTestQuery($query, $pass, $fail, $fatal = FALSE) {
     try {
       db_query($query);
-      $this->pass(t($pass));
+      $this->pass(st($pass));
     }
-    catch (\Exception $e) {
-      $this->fail(t($fail, array('%query' => $query, '%error' => $e->getMessage(), '%name' => $this->name())));
+    catch (Exception $e) {
+      $this->fail(st($fail, array('%query' => $query, '%error' => $e->getMessage(), '%name' => $this->name())));
       return !$fatal;
     }
   }
@@ -196,7 +192,7 @@ abstract class Tasks {
    */
   protected function checkEngineVersion() {
     if ($this->minimumVersion() && version_compare(Database::getConnection()->version(), $this->minimumVersion(), '<')) {
-      $this->fail(t("The database version %version is less than the minimum required version %minimum_version.", array('%version' => Database::getConnection()->version(), '%minimum_version' => $this->minimumVersion())));
+      $this->fail(st("The database version %version is less than the minimum required version %minimum_version.", array('%version' => Database::getConnection()->version(), '%minimum_version' => $this->minimumVersion())));
     }
   }
 
@@ -209,36 +205,27 @@ abstract class Tasks {
    * @return
    *   The options form array.
    */
-  public function getFormOptions(array $database) {
+  public function getFormOptions($database) {
     $form['database'] = array(
       '#type' => 'textfield',
-      '#title' => t('Database name'),
+      '#title' => st('Database name'),
       '#default_value' => empty($database['database']) ? '' : $database['database'],
       '#size' => 45,
       '#required' => TRUE,
-      '#states' => array(
-        'required' => array(
-          ':input[name=driver]' => array('value' => $this->pdoDriver),
-        ),
-      ),
+      '#description' => st('The name of the database your @drupal data will be stored in.', array('@drupal' => drupal_install_profile_distribution_name())),
     );
 
     $form['username'] = array(
       '#type' => 'textfield',
-      '#title' => t('Database username'),
+      '#title' => st('Database username'),
       '#default_value' => empty($database['username']) ? '' : $database['username'],
-      '#size' => 45,
       '#required' => TRUE,
-      '#states' => array(
-        'required' => array(
-          ':input[name=driver]' => array('value' => $this->pdoDriver),
-        ),
-      ),
+      '#size' => 45,
     );
 
     $form['password'] = array(
       '#type' => 'password',
-      '#title' => t('Database password'),
+      '#title' => st('Database password'),
       '#default_value' => empty($database['password']) ? '' : $database['password'],
       '#required' => FALSE,
       '#size' => 45,
@@ -246,37 +233,43 @@ abstract class Tasks {
 
     $form['advanced_options'] = array(
       '#type' => 'details',
-      '#title' => t('Advanced options'),
+      '#title' => st('Advanced options'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#description' => st("These options are only necessary for some sites. If you're not sure what you should enter here, leave the default settings or check with your hosting provider."),
       '#weight' => 10,
     );
 
     $profile = drupal_get_profile();
     $db_prefix = ($profile == 'standard') ? 'drupal_' : $profile . '_';
-    $form['advanced_options']['prefix'] = array(
+    $form['advanced_options']['db_prefix'] = array(
       '#type' => 'textfield',
-      '#title' => t('Table name prefix'),
-      '#default_value' => empty($database['prefix']) ? '' : $database['prefix'],
+      '#title' => st('Table prefix'),
+      '#default_value' => '',
       '#size' => 45,
-      '#description' => t('If more than one application will be sharing this database, a unique table name prefix–such as %prefix–will prevent collisions.', array('%prefix' => $db_prefix)),
+      '#description' => st('If more than one application will be sharing this database, enter a table prefix such as %prefix for your @drupal site here.', array('@drupal' => drupal_install_profile_distribution_name(), '%prefix' => $db_prefix)),
       '#weight' => 10,
     );
 
     $form['advanced_options']['host'] = array(
       '#type' => 'textfield',
-      '#title' => t('Host'),
+      '#title' => st('Database host'),
       '#default_value' => empty($database['host']) ? 'localhost' : $database['host'],
       '#size' => 45,
       // Hostnames can be 255 characters long.
       '#maxlength' => 255,
       '#required' => TRUE,
+      '#description' => st('If your database is located on a different server, change this.'),
     );
 
     $form['advanced_options']['port'] = array(
-      '#type' => 'number',
-      '#title' => t('Port number'),
+      '#type' => 'textfield',
+      '#title' => st('Database port'),
       '#default_value' => empty($database['port']) ? '' : $database['port'],
-      '#min' => 0,
-      '#max' => 65535,
+      '#size' => 45,
+      // The maximum port number is 65536, 5 digits.
+      '#maxlength' => 5,
+      '#description' => st('If your database server is listening to a non-standard port, enter its number.'),
     );
 
     return $form;
@@ -299,7 +292,12 @@ abstract class Tasks {
 
     // Verify the table prefix.
     if (!empty($database['prefix']) && is_string($database['prefix']) && !preg_match('/^[A-Za-z0-9_.]+$/', $database['prefix'])) {
-      $errors[$database['driver'] . '][prefix'] = t('The database table prefix you have entered, %prefix, is invalid. The table prefix can only contain alphanumeric characters, periods, or underscores.', array('%prefix' => $database['prefix']));
+      $errors[$database['driver'] . '][advanced_options][db_prefix'] = st('The database table prefix you have entered, %prefix, is invalid. The table prefix can only contain alphanumeric characters, periods, or underscores.', array('%prefix' => $database['prefix']));
+    }
+
+    // Verify the database port.
+    if (!empty($database['port']) && !is_numeric($database['port'])) {
+      $errors[$database['driver'] . '][advanced_options][port'] =  st('Database port must be a number.');
     }
 
     return $errors;

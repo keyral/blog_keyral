@@ -76,17 +76,8 @@ class StreamedResponseTest extends \PHPUnit_Framework_TestCase
      */
     public function testSendContentWithNonCallable()
     {
-        $response = new StreamedResponse(null);
+        $response = new StreamedResponse('foobar');
         $response->sendContent();
-    }
-
-    /**
-     * @expectedException \LogicException
-     */
-    public function testSetCallbackNonCallable()
-    {
-        $response = new StreamedResponse(null);
-        $response->setCallback(null);
     }
 
     /**

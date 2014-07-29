@@ -12,14 +12,14 @@
 
 namespace Drupal\Core;
 
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\HttpKernel as BaseHttpKernel;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\ContainerAwareTrait;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * This HttpKernel is used to manage scope changes of the DI container.
@@ -27,11 +27,18 @@ use Symfony\Component\DependencyInjection\ContainerAwareTrait;
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
  */
-class HttpKernel extends BaseHttpKernel implements ContainerAwareInterface {
-
-    use ContainerAwareTrait;
+class HttpKernel extends BaseHttpKernel
+{
+    protected $container;
 
     private $esiSupport;
+
+    public function __construct(EventDispatcherInterface $dispatcher, ContainerInterface $container, ControllerResolverInterface $controllerResolver)
+    {
+        parent::__construct($dispatcher, $controllerResolver);
+
+        $this->container = $container;
+    }
 
     public function handle(Request $request, $type = HttpKernelInterface::MASTER_REQUEST, $catch = true)
     {
@@ -56,21 +63,18 @@ class HttpKernel extends BaseHttpKernel implements ContainerAwareInterface {
     /**
      * Forwards the request to another controller.
      *
-     * @param string|null $controller
-     *   The controller name (a string like BlogBundle:Post:index).
-     * @param array $attributes
-     *   An array of request attributes.
-     * @param array $query
-     *   An array of request query parameters.
+     * @param string $controller The controller name (a string like BlogBundle:Post:index)
+     * @param array  $attributes An array of request attributes
+     * @param array  $query      An array of request query parameters
      *
-     * @return Response
-     *   A Response instance
+     * @return Response A Response instance
      */
     public function forward($controller, array $attributes = array(), array $query = array())
     {
-      $subrequest = $this->setupSubrequest($controller, $attributes, $query);
+        $attributes['_controller'] = $controller;
+        $subRequest = $this->container->get('request')->duplicate($query, null, $attributes);
 
-      return $this->handle($subrequest, HttpKernelInterface::SUB_REQUEST);
+        return $this->handle($subRequest, HttpKernelInterface::SUB_REQUEST);
     }
 
     /**
@@ -149,7 +153,7 @@ class HttpKernel extends BaseHttpKernel implements ContainerAwareInterface {
                 $options['attributes']['_format'] = $request->getRequestFormat();
             }
 
-            $options['attributes'][RouteObjectInterface::ROUTE_OBJECT] = '_internal';
+            $options['attributes']['_route'] = '_internal';
             $subRequest = $request->duplicate($options['query'], null, $options['attributes']);
             $subRequest->setMethod('GET');
         }
@@ -235,29 +239,4 @@ class HttpKernel extends BaseHttpKernel implements ContainerAwareInterface {
     {
         return $this->esiSupport;
     }
-
-  /**
-   * Creates a request object for a subrequest.
-   *
-   * @param string $controller
-   *   The controller name (a string like BlogBundle:Post:index)
-   * @param array $attributes
-   *   An array of request attributes.
-   * @param array $query
-   *   An array of request query parameters.
-   *
-   * @return \Symfony\Component\HttpFoundation\Request
-   *   Returns the new request.
-   */
-  public function setupSubrequest($controller, array $attributes, array $query) {
-    // Don't override the controller if it's NULL.
-    if (isset($controller)) {
-      $attributes['_controller'] = $controller;
-    }
-    else {
-      unset($attributes['_controller']);
-    }
-    return $this->container->get('request')->duplicate($query, NULL, $attributes);
-  }
-
 }

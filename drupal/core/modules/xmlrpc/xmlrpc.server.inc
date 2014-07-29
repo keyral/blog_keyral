@@ -5,33 +5,19 @@
  * Page callback file for the xmlrpc module.
  */
 
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-
 /**
  * Process an XML-RPC request.
- *
- * @return \Symfony\Component\HttpFoundation\Response
- *   A Response object.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\xmlrpc\Controller\XmlrpcController::php().
  */
 function xmlrpc_server_page() {
   module_load_include('inc', 'xmlrpc');
-  return xmlrpc_server(\Drupal::moduleHandler()->invokeAll('xmlrpc'));
+  xmlrpc_server(module_invoke_all('xmlrpc'));
 }
 
 /**
  * Invokes XML-RPC methods on this server.
  *
  * @param array $callbacks
- *   Either an associative array of external XML-RPC method names as keys with
- *   the callbacks they map to as values, or a more complex structure
- *   describing XML-RPC callbacks as returned from hook_xmlrpc().
- *
- * @return \Symfony\Component\HttpFoundation\Response
- *   A Response object.
+ *   Array of external XML-RPC method names with the callbacks they map to.
  */
 function xmlrpc_server($callbacks) {
   $xmlrpc_server = new stdClass();
@@ -67,7 +53,7 @@ function xmlrpc_server($callbacks) {
   // with those defined by modules implementing the _xmlrpc hook.
   // Built-in methods are overridable.
   $callbacks = array_merge($defaults, (array) $callbacks);
-  \Drupal::moduleHandler()->alter('xmlrpc', $callbacks);
+  drupal_alter('xmlrpc', $callbacks);
   foreach ($callbacks as $key => $callback) {
     // we could check for is_array($callback)
     if (is_int($key)) {
@@ -85,14 +71,15 @@ function xmlrpc_server($callbacks) {
 
   $data = file_get_contents('php://input');
   if (!$data) {
-    throw new BadRequestHttpException('XML-RPC server accepts POST requests only.');
+    print 'XML-RPC server accepts POST requests only.';
+    drupal_exit();
   }
   $xmlrpc_server->message = xmlrpc_message($data);
   if (!xmlrpc_message_parse($xmlrpc_server->message)) {
-    return xmlrpc_server_error(-32700, t('Parse error. Request not well formed.'));
+    xmlrpc_server_error(-32700, t('Parse error. Request not well formed.'));
   }
   if ($xmlrpc_server->message->messagetype != 'methodCall') {
-    return xmlrpc_server_error(-32600, t('Server error. Invalid XML-RPC. Request must be a methodCall.'));
+    xmlrpc_server_error(-32600, t('Server error. Invalid XML-RPC. Request must be a methodCall.'));
   }
   if (!isset($xmlrpc_server->message->params)) {
     $xmlrpc_server->message->params = array();
@@ -101,7 +88,7 @@ function xmlrpc_server($callbacks) {
   $result = xmlrpc_server_call($xmlrpc_server, $xmlrpc_server->message->methodname, $xmlrpc_server->message->params);
 
   if (is_object($result) && !empty($result->is_error)) {
-    return xmlrpc_server_error($result);
+    xmlrpc_server_error($result);
   }
   // Encode the result
   $r = xmlrpc_value($result);
@@ -117,7 +104,7 @@ function xmlrpc_server($callbacks) {
 
 ';
   // Send it
-  return xmlrpc_server_output($xml);
+  xmlrpc_server_output($xml);
 }
 
 /**
@@ -128,15 +115,12 @@ function xmlrpc_server($callbacks) {
  * @param $message
  *   (optional) The description of the error. Used only if an integer error
  *   code was passed in.
- *
- * @return \Symfony\Component\HttpFoundation\Response
- *   A Response object.
  */
 function xmlrpc_server_error($error, $message = FALSE) {
   if ($message && !is_object($error)) {
     $error = xmlrpc_error($error, $message);
   }
-  return xmlrpc_server_output(xmlrpc_error_get_xml($error));
+  xmlrpc_server_output(xmlrpc_error_get_xml($error));
 }
 
 /**
@@ -144,17 +128,13 @@ function xmlrpc_server_error($error, $message = FALSE) {
  *
  * @param string $xml
  *   XML to send to the browser.
- *
- * @return \Symfony\Component\HttpFoundation\Response
- *   A Response object.
  */
 function xmlrpc_server_output($xml) {
   $xml = '<?xml version="1.0"?>' . "\n" . $xml;
-  $headers = array(
-    'Content-Length' => strlen($xml),
-    'Content-Type' => 'text/xml'
-  );
-  return new Response($xml, 200, $headers);
+  drupal_add_http_header('Content-Length', strlen($xml));
+  drupal_add_http_header('Content-Type', 'text/xml');
+  echo $xml;
+  drupal_exit();
 }
 
 /**
@@ -218,8 +198,7 @@ function xmlrpc_server_call($xmlrpc_server, $methodname, $args) {
   // If the method has a signature, validate the request against the signature
   if (is_array($signature)) {
     $ok = TRUE;
-    // Remove first element of $signature which is the unused 'return type'.
-    array_shift($signature);
+    $return_type = array_shift($signature);
     // Check the number of arguments
     if (count($args) != count($signature)) {
       return xmlrpc_error(-32602, t('Server error. Wrong number of method parameters.'));

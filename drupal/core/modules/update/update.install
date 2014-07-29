@@ -18,7 +18,7 @@
  *   optionally 'description'), this array will contain a 'reason' attribute,
  *   which is an integer constant to indicate why the given status is being
  *   returned (UPDATE_NOT_SECURE, UPDATE_NOT_CURRENT, or UPDATE_UNKNOWN). This
- *   is used for generating the appropriate email notification messages during
+ *   is used for generating the appropriate e-mail notification messages during
  *   update_cron(), and might be useful for other modules that invoke
  *   update_requirements() to find out if the site is up to date or not.
  *
@@ -57,10 +57,19 @@ function update_requirements($phase) {
 }
 
 /**
+ * Implements hook_schema().
+ */
+function update_schema() {
+  $schema['cache_update'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_update']['description'] = 'Cache table for the Update module to store information about available releases, fetched from central server.';
+  return $schema;
+}
+
+/**
  * Implements hook_install().
  */
 function update_install() {
-  $queue = \Drupal::queue('update_fetch_tasks', TRUE);
+  $queue = queue('update_fetch_tasks', TRUE);
   $queue->createQueue();
 }
 
@@ -68,10 +77,11 @@ function update_install() {
  * Implements hook_uninstall().
  */
 function update_uninstall() {
-  \Drupal::state()->delete('update.last_check');
-  \Drupal::state()->delete('update.last_email_notification');
+  // @todo D8: Convert to new state storage.
+  variable_del('update_last_check');
+  variable_del('update_last_email_notification');
 
-  $queue = \Drupal::queue('update_fetch_tasks');
+  $queue = queue('update_fetch_tasks');
   $queue->deleteQueue();
 }
 
@@ -136,4 +146,32 @@ function _update_requirement_check($project, $type) {
   }
   $requirement['value'] = l($requirement_label, update_manager_access() ? 'admin/reports/updates/update' : 'admin/reports/updates');
   return $requirement;
+}
+
+/**
+ * Moves update settings from variables to config.
+ */
+function update_update_8000() {
+  update_variables_to_config('update.settings', array(
+    'update_check_disabled' => 'check.disabled_extensions',
+    'update_check_frequency' => 'check.interval_days',
+    'update_fetch_url' => 'fetch.url',
+    'update_max_fetch_attempts' => 'fetch.max_attempts',
+    'update_max_fetch_time' => 'fetch.timeout',
+    'update_notify_emails' => 'notification.emails',
+    'update_notification_threshold' => 'notification.threshold',
+  ));
+}
+
+/**
+ * Convert update_last_check, last_email_notification variables to state API.
+ *
+ * @ingroup config_upgrade
+ */
+function update_update_8001() {
+  $variable_map = array(
+    'update_last_check' => 'update.last_check',
+    'update_last_email_notification' => 'update.last_email_notification'
+  );
+  update_variables_to_state($variable_map);
 }

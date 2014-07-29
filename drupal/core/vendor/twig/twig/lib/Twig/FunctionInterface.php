@@ -13,10 +13,8 @@
 /**
  * Represents a template function.
  *
- * Use Twig_SimpleFunction instead.
- *
- * @author Arnaud Le Blanc <arnaud.lb@gmail.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package    twig
+ * @author     Arnaud Le Blanc <arnaud.lb@gmail.com>
  */
 interface Twig_FunctionInterface
 {
@@ -25,15 +23,15 @@ interface Twig_FunctionInterface
      *
      * @return string The PHP code for the function
      */
-    public function compile();
+    function compile();
 
-    public function needsEnvironment();
+    function needsEnvironment();
 
-    public function needsContext();
+    function needsContext();
 
-    public function getSafe(Twig_Node $filterArgs);
+    function getSafe(Twig_Node $filterArgs);
 
-    public function setArguments($arguments);
+    function setArguments($arguments);
 
-    public function getArguments();
+    function getArguments();
 }

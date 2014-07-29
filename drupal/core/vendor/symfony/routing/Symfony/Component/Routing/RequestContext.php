@@ -23,34 +23,26 @@ use Symfony\Component\HttpFoundation\Request;
 class RequestContext
 {
     private $baseUrl;
-    private $pathInfo;
     private $method;
     private $host;
     private $scheme;
     private $httpPort;
     private $httpsPort;
-    private $queryString;
-
-    /**
-     * @var array
-     */
-    private $parameters = array();
+    private $parameters;
 
     /**
      * Constructor.
      *
-     * @param string  $baseUrl      The base URL
-     * @param string  $method       The HTTP method
-     * @param string  $host         The HTTP host name
-     * @param string  $scheme       The HTTP scheme
-     * @param integer $httpPort     The HTTP port
-     * @param integer $httpsPort    The HTTPS port
-     * @param string  $path         The path
-     * @param string  $queryString  The query string
+     * @param string  $baseUrl   The base URL
+     * @param string  $method    The HTTP method
+     * @param string  $host      The HTTP host name
+     * @param string  $scheme    The HTTP scheme
+     * @param integer $httpPort  The HTTP port
+     * @param integer $httpsPort The HTTPS port
      *
      * @api
      */
-    public function __construct($baseUrl = '', $method = 'GET', $host = 'localhost', $scheme = 'http', $httpPort = 80, $httpsPort = 443, $path = '/', $queryString = '')
+    public function __construct($baseUrl = '', $method = 'GET', $host = 'localhost', $scheme = 'http', $httpPort = 80, $httpsPort = 443)
     {
         $this->baseUrl = $baseUrl;
         $this->method = strtoupper($method);
@@ -58,20 +50,17 @@ class RequestContext
         $this->scheme = strtolower($scheme);
         $this->httpPort = $httpPort;
         $this->httpsPort = $httpsPort;
-        $this->pathInfo = $path;
-        $this->queryString = $queryString;
+        $this->parameters = array();
     }
 
     public function fromRequest(Request $request)
     {
         $this->setBaseUrl($request->getBaseUrl());
-        $this->setPathInfo($request->getPathInfo());
         $this->setMethod($request->getMethod());
         $this->setHost($request->getHost());
         $this->setScheme($request->getScheme());
         $this->setHttpPort($request->isSecure() ? $this->httpPort : $request->getPort());
         $this->setHttpsPort($request->isSecure() ? $request->getPort() : $this->httpsPort);
-        $this->setQueryString($request->server->get('QUERY_STRING'));
     }
 
     /**
@@ -94,26 +83,6 @@ class RequestContext
     public function setBaseUrl($baseUrl)
     {
         $this->baseUrl = $baseUrl;
-    }
-
-    /**
-     * Gets the path info.
-     *
-     * @return string The path info
-     */
-    public function getPathInfo()
-    {
-        return $this->pathInfo;
-    }
-
-    /**
-     * Sets the path info.
-     *
-     * @param string $pathInfo The path info
-     */
-    public function setPathInfo($pathInfo)
-    {
-        $this->pathInfo = $pathInfo;
     }
 
     /**
@@ -226,28 +195,6 @@ class RequestContext
     public function setHttpsPort($httpsPort)
     {
         $this->httpsPort = $httpsPort;
-    }
-
-    /**
-     * Gets the query string.
-     *
-     * @return string The query string
-     */
-    public function getQueryString()
-    {
-        return $this->queryString;
-    }
-
-    /**
-     * Sets the query string.
-     *
-     * @param string $queryString The query string
-     *
-     * @api
-     */
-    public function setQueryString($queryString)
-    {
-        $this->queryString = $queryString;
     }
 
     /**

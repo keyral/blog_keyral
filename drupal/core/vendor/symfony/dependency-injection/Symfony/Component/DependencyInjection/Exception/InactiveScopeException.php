@@ -21,9 +21,9 @@ class InactiveScopeException extends RuntimeException
     private $serviceId;
     private $scope;
 
-    public function __construct($serviceId, $scope, \Exception $previous = null)
+    public function __construct($serviceId, $scope)
     {
-        parent::__construct(sprintf('You cannot create a service ("%s") of an inactive scope ("%s").', $serviceId, $scope), 0, $previous);
+        parent::__construct(sprintf('You cannot create a service ("%s") of an inactive scope ("%s").', $serviceId, $scope));
 
         $this->serviceId = $serviceId;
         $this->scope = $scope;

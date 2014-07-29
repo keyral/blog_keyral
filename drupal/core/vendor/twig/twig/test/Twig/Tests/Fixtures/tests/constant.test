@@ -2,13 +2,11 @@
 "const" test
 --TEMPLATE--
 {{ 8 is constant('E_NOTICE') ? 'ok' : 'no' }}
-{{ 'bar' is constant('TwigTestFoo::BAR_NAME') ? 'ok' : 'no' }}
-{{ value is constant('TwigTestFoo::BAR_NAME') ? 'ok' : 'no' }}
-{{ 2 is constant('ARRAY_AS_PROPS', object) ? 'ok' : 'no' }}
+{{ 'bar' is constant('Foo::BAR_NAME') ? 'ok' : 'no' }}
+{{ value is constant('Foo::BAR_NAME') ? 'ok' : 'no' }}
 --DATA--
-return array('value' => 'bar', 'object' => new ArrayObject(array('hi')));
+return array('value' => 'bar');
 --EXPECT--
-ok
 ok
 ok
 ok

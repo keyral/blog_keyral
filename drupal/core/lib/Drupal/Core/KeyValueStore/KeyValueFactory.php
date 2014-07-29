@@ -6,37 +6,12 @@
  */
 
 namespace Drupal\Core\KeyValueStore;
-
-use Drupal\Core\Site\Settings;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines the key/value store factory.
  */
-class KeyValueFactory implements KeyValueFactoryInterface {
-
-  /**
-   * The specific setting name prefix.
-   *
-   * The collection name will be prefixed with this constant and used as a
-   * setting name. The setting value will be the id of a service.
-   */
-  const SPECIFIC_PREFIX = 'keyvalue_service_';
-
-  /**
-   * The default setting name.
-   *
-   * This is a setting name that will be used if the specific setting does not
-   * exist. The setting value will be the id of a service.
-   */
-  const DEFAULT_SETTING = 'keyvalue_default';
-
-  /**
-   * The default service id.
-   *
-   * If the default setting does not exist, this is the default service id.
-   */
-  const DEFAULT_SERVICE = 'keyvalue.database';
+class KeyValueFactory {
 
   /**
    * Instantiated stores, keyed by collection name.
@@ -50,40 +25,38 @@ class KeyValueFactory implements KeyValueFactoryInterface {
    */
   protected $container;
 
-  /**
-   * The read-only settings container.
-   *
-   * @var \Drupal\Core\Site\Settings
-   */
-  protected $settings;
 
   /**
    * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
-   *   The service container.
-   * @param \Drupal\Core\Site\Settings $settings
-   *  The read-only settings container.
    */
-  function __construct(ContainerInterface $container, Settings $settings) {
+  function __construct(ContainerInterface $container) {
     $this->container = $container;
-    $this->settings = $settings;
   }
 
   /**
-   * {@inheritdoc}
+   * Constructs a new key/value store for a given collection name.
+   *
+   * @param string $collection
+   *   The name of the collection holding key and value pairs.
+   *
+   * @return \Drupal\Core\KeyValueStore\KeyValueStoreInterface
+   *   A key/value store implementation for the given $collection.
    */
   public function get($collection) {
+    global $conf;
     if (!isset($this->stores[$collection])) {
-      if ($service_name = $this->settings->get(static::SPECIFIC_PREFIX . $collection)) {
+      if (isset($conf['keyvalue_service_' . $collection])) {
+        $service_name = $conf['keyvalue_service_' . $collection];
       }
-      elseif ($service_name = $this->settings->get(static::DEFAULT_SETTING)) {
+      elseif (isset($conf['keyvalue_default'])) {
+        $service_name = $conf['keyvalue_default'];
       }
       else {
-        $service_name = static::DEFAULT_SERVICE;
+        $service_name = 'keyvalue.database';
       }
       $this->stores[$collection] = $this->container->get($service_name)->get($collection);
     }
     return $this->stores[$collection];
   }
-
 }
 

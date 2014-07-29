@@ -5,22 +5,19 @@
  * Simulate a custom module with a local po file.
  */
 
-use Drupal\Core\Extension\Extension;
-use Drupal\Core\StreamWrapper\PublicStream;
-
 /**
  * Implements hook_system_info_alter().
  *
  * Make the test scripts to be believe this is not a hidden test module, but
  * a regular custom module.
  */
-function locale_test_system_info_alter(&$info, Extension $file, $type) {
+function locale_test_system_info_alter(&$info, $file, $type) {
   // Only modify the system info if required.
   // By default the locale_test modules are hidden and have a project specified.
-  // To test the module detection process by locale_project_list() the
+  // To test the module detection proces by locale_project_list() the
   // test modules should mimic a custom module. I.e. be non-hidden.
-  if (\Drupal::state()->get('locale.test_system_info_alter')) {
-    if ($file->getName() == 'locale_test' || $file->getName() == 'locale_test_translate') {
+  if (state()->get('locale_translation_test_system_info_alter')) {
+    if ($file->name == 'locale_test' || $file->name == 'locale_test_disabled') {
       // Don't hide the module.
       $info['hidden'] = FALSE;
     }
@@ -36,24 +33,41 @@ function locale_test_system_info_alter(&$info, Extension $file, $type) {
  * names, versions, timestamps etc must be fixed because they must match the
  * files created by the test script.
  *
- * The "locale.test_projects_alter" state variable must be set by the
+ * The "locale_translation_test_projects" state variable must be set by the
  * test script in order for this hook to take effect.
  */
 function locale_test_locale_translation_projects_alter(&$projects) {
-  if (\Drupal::state()->get('locale.test_projects_alter')) {
+  if (state()->get('locale_translation_test_projects')) {
 
     // Instead of the default ftp.drupal.org we use the file system of the test
     // instance to simulate a remote file location.
     $url = url(NULL, array('absolute' => TRUE));
-    $remote_url = $url . PublicStream::basePath() . '/remote/';
+    $remote_url = $url . variable_get('file_public_path', conf_path() . '/files') . '/remote/';
 
     // Completely replace the project data with a set of test projects.
+    $base_url = url();
+    $files_url = variable_get('file_public_path', conf_path() . '/files');
     $projects = array (
+      'drupal' => array (
+        'name' => 'drupal',
+        'info' => array (
+          'name' => 'Drupal',
+          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language.txt',
+          'package' => 'Core',
+          'version' => '8.0',
+          'project' => 'drupal',
+          '_info_file_ctime' => 1348824632,
+          'datestamp' => 0,
+        ),
+        'datestamp' => 0,
+        'project_type' => 'core',
+        'project_status' => TRUE,
+      ),
       'contrib_module_one' => array (
         'name' => 'contrib_module_one',
         'info' => array (
           'name' => 'Contributed module one',
-          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language._po',
+          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language.txt',
           'package' => 'Other',
           'version' => '8.x-1.1',
           'project' => 'contrib_module_one',
@@ -68,7 +82,7 @@ function locale_test_locale_translation_projects_alter(&$projects) {
         'name' => 'contrib_module_two',
         'info' => array (
           'name' => 'Contributed module two',
-          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language._po',
+          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language.txt',
           'package' => 'Other',
           'version' => '8.x-2.0-beta4',
           'project' => 'contrib_module_two',
@@ -83,7 +97,7 @@ function locale_test_locale_translation_projects_alter(&$projects) {
         'name' => 'contrib_module_three',
         'info' => array (
           'name' => 'Contributed module three',
-          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language._po',
+          'interface translation server pattern' => $remote_url . '%core/%project/%project-%version.%language.txt',
           'package' => 'Other',
           'version' => '8.x-1.0',
           'project' => 'contrib_module_three',

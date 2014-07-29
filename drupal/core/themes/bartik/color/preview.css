@@ -1,4 +1,14 @@
+
+/* ---------- Color form ----------- */
+#color_scheme_form #palette .form-item {
+  width: 25em;
+}
+#color_scheme_form #palette .form-item label {
+  width: 15em;
+}
+
 /* ---------- Preview Styles ----------- */
+
 .js #preview {
   clear: both;
   float: none !important;
@@ -52,13 +62,14 @@
 }
 #preview-main-menu-links a:hover,
 #preview-main-menu-links a:focus {
-  background: #eee;
+  background: #fff;
   background: rgba(255, 255, 255, 0.95);
-  text-decoration: none;
-  cursor: pointer;
+}
+#preview-main-menu-links a:active {
+  background: #b3b3b3;
+  background: rgba(255, 255, 255, 1);
 }
 #preview-main-menu-links li a.active {
-  background: #fff;
   border-bottom: none;
 }
 #preview-main-menu-links li {

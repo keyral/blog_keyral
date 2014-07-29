@@ -12,7 +12,7 @@
  * This polyfill triggers tests on window resize and orientationchange.
  */
 
-window.matchMedia = window.matchMedia || (function (doc, window, Drupal) {
+window.matchMedia = window.matchMedia || (function (doc, window) {
 
   "use strict";
 
@@ -33,7 +33,7 @@ window.matchMedia = window.matchMedia || (function (doc, window, Drupal) {
    * @param {String} q
    *   A media query e.g. "screen" or "screen and (min-width: 28em)".
    */
-  function MediaQueryList(q) {
+  function MediaQueryList (q) {
     this.media = q;
     this.matches = false;
     this.check.call(this);
@@ -79,7 +79,7 @@ window.matchMedia = window.matchMedia || (function (doc, window, Drupal) {
             debounced.call(mql, mql);
           }
         };
-      }(this, Drupal.debounce(callback, 250)));
+      }(this, debounce(callback, 250)));
       this.listeners.push({
         'callback': callback,
         'handler': handler
@@ -121,6 +121,32 @@ window.matchMedia = window.matchMedia || (function (doc, window, Drupal) {
   };
 
   /**
+   * Limits the invocations of a function in a given time frame.
+   *
+   * @param {Function} callback
+   *   The function to be invoked.
+   *
+   * @param {Number} wait
+   *   The time period within which the callback function should only be
+   *   invoked once. For example if the wait period is 250ms, then the callback
+   *   will only be called at most 4 times per second.
+   */
+  function debounce (callback, wait) {
+    var timeout, result;
+    return function () {
+      var context = this;
+      var args = arguments;
+      var later = function () {
+        timeout = null;
+        result = callback.apply(context, args);
+      };
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(later, wait);
+      return result;
+    };
+  }
+
+  /**
    * Return a MediaQueryList.
    *
    * @param {String} q
@@ -131,4 +157,4 @@ window.matchMedia = window.matchMedia || (function (doc, window, Drupal) {
     // Build a new MediaQueryList object with the result of the check.
     return new MediaQueryList(q);
   };
-}(document, window, Drupal));
+}(document, window));

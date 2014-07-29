@@ -7,9 +7,6 @@
 
 namespace Drupal\Core\StreamWrapper;
 
-use Drupal\Component\Utility\UrlHelper;
-use Drupal\Core\Site\Settings;
-
 /**
  * Defines a Drupal public (public://) stream wrapper class.
  *
@@ -19,29 +16,20 @@ use Drupal\Core\Site\Settings;
 class PublicStream extends LocalStream {
 
   /**
-   * {@inheritdoc}
+   * Implements Drupal\Core\StreamWrapper\LocalStream::getDirectoryPath()
    */
   public function getDirectoryPath() {
-    return static::basePath();
+    return variable_get('file_public_path', conf_path() . '/files');
   }
 
   /**
-   * {@inheritdoc}
-   */
-  public function getExternalUrl() {
-    $path = str_replace('\\', '/', $this->getTarget());
-    return $GLOBALS['base_url'] . '/' . self::getDirectoryPath() . '/' . UrlHelper::encodePath($path);
-  }
-
-  /**
-   * Returns the base path for public://.
+   * Implements Drupal\Core\StreamWrapper\StreamWrapperInterface::getExternalUrl().
    *
    * @return string
-   *   The base path for public:// typically sites/default/files.
+   *   Returns the HTML URI of a public file.
    */
-  public static function basePath() {
-    $base_path = Settings::get('file_public_path', conf_path() . '/files');
-    return $base_path;
+  function getExternalUrl() {
+    $path = str_replace('\\', '/', $this->getTarget());
+    return $GLOBALS['base_url'] . '/' . self::getDirectoryPath() . '/' . drupal_encode_path($path);
   }
-
 }

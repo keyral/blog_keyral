@@ -2,7 +2,9 @@
 
 /**
  * @file
- * Provide views data for contextual.module.
+ * Provide views data and handlers for contextual.module.
+ *
+ * @ingroup views_module_handlers
  */
 
 /**

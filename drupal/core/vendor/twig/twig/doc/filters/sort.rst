@@ -5,7 +5,7 @@ The ``sort`` filter sorts an array:
 
 .. code-block:: jinja
 
-    {% for user in users|sort %}
+    {% for use in users|sort %}
         ...
     {% endfor %}
 

@@ -7,26 +7,22 @@
 
 namespace Drupal\Core\Utility;
 
-use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
-use Drupal\Core\Cache\CacheCollector;
-use Drupal\Core\DestructableInterface;
-use Drupal\Core\Lock\LockBackendInterface;
 
 /**
  * Builds the run-time theme registry.
  *
- * A cache collector to allow the theme registry to be accessed as a
+ * Extends CacheArray to allow the theme registry to be accessed as a
  * complete registry, while internally caching only the parts of the registry
  * that are actually in use on the site. On cache misses the complete
  * theme registry is loaded and used to update the run-time cache.
  */
-class ThemeRegistry extends CacheCollector implements DestructableInterface {
+class ThemeRegistry extends CacheArray {
 
   /**
    * Whether the partial registry can be persisted to the cache.
    *
-   * This is only allowed if all modules and the request method is GET. _theme()
+   * This is only allowed if all modules and the request method is GET. theme()
    * should be very rarely called on POST requests and this avoids polluting
    * the runtime cache.
    */
@@ -42,41 +38,32 @@ class ThemeRegistry extends CacheCollector implements DestructableInterface {
    *
    * @param string $cid
    *   The cid for the array being cached.
-   * @param \Drupal\Core\Cache\CacheBackendInterface $cache
-   *   The cache backend.
-   * @param \Drupal\Core\Lock\LockBackendInterface $lock
-   *   The lock backend.
+   * @param string $bin
+   *   The bin to cache the array.
    * @param array $tags
    *   (optional) The tags to specify for the cache item.
-   * @param bool $modules_loaded
-   *   Whether all modules have already been loaded.
    */
-  function __construct($cid, CacheBackendInterface $cache, LockBackendInterface $lock, $tags = array(), $modules_loaded = FALSE) {
+  function __construct($cid, $bin, $tags) {
     $this->cid = $cid;
-    $this->cache = $cache;
-    $this->lock = $lock;
+    $this->bin = $bin;
     $this->tags = $tags;
-    $this->persistable = $modules_loaded && \Drupal::hasRequest() && \Drupal::request()->isMethod('GET');
+    $this->persistable = module_load_all(NULL) && $_SERVER['REQUEST_METHOD'] == 'GET';
 
-     // @todo: Implement lazyload.
-    $this->cacheLoaded = TRUE;
-
-    if ($this->persistable && $cached = $this->cache->get($this->cid)) {
-      $this->storage = $cached->data;
+    $data = array();
+    if ($this->persistable && $cached = cache($this->bin)->get($this->cid)) {
+      $data = $cached->data;
     }
     else {
       // If there is no runtime cache stored, fetch the full theme registry,
       // but then initialize each value to NULL. This allows offsetExists()
       // to function correctly on non-registered theme hooks without triggering
       // a call to resolveCacheMiss().
-      $this->storage = $this->initializeRegistry();
-      foreach (array_keys($this->storage) as $key) {
-        $this->persist($key);
+      $data = $this->initializeRegistry();
+      if ($this->persistable) {
+        $this->set($data);
       }
-      // RegistryTest::testRaceCondition() ensures that the cache entry is
-      // written on the initial construction of the theme registry.
-      $this->updateCache();
     }
+    $this->storage = $data;
   }
 
   /**
@@ -87,73 +74,58 @@ class ThemeRegistry extends CacheCollector implements DestructableInterface {
    *   initialized to NULL.
    */
   function initializeRegistry() {
-    // @todo DIC this.
-    $this->completeRegistry = \Drupal::service('theme.registry')->get();
+    $this->completeRegistry = theme_get_registry();
 
     return array_fill_keys(array_keys($this->completeRegistry), NULL);
   }
 
   /**
-   * {@inheritdoc}
+   * Overrides CacheArray::offsetExists().
    */
-  public function has($key) {
+  public function offsetExists($offset) {
     // Since the theme registry allows for theme hooks to be requested that
     // are not registered, just check the existence of the key in the registry.
     // Use array_key_exists() here since a NULL value indicates that the theme
     // hook exists but has not yet been requested.
-    return array_key_exists($key, $this->storage);
+    return array_key_exists($offset, $this->storage);
   }
 
   /**
-   * {@inheritdoc}
+   * Overrides CacheArray::offsetGet().
    */
-  public function get($key) {
+  public function offsetGet($offset) {
     // If the offset is set but empty, it is a registered theme hook that has
     // not yet been requested. Offsets that do not exist at all were not
     // registered in hook_theme().
-    if (isset($this->storage[$key])) {
-      return $this->storage[$key];
+    if (isset($this->storage[$offset])) {
+      return $this->storage[$offset];
     }
-    elseif (array_key_exists($key, $this->storage)) {
-      return $this->resolveCacheMiss($key);
+    elseif (array_key_exists($offset, $this->storage)) {
+      return $this->resolveCacheMiss($offset);
     }
   }
 
   /**
-   * {@inheritdoc}
+   * Implements CacheArray::resolveCacheMiss().
    */
-  public function resolveCacheMiss($key) {
+  public function resolveCacheMiss($offset) {
     if (!isset($this->completeRegistry)) {
-      $this->completeRegistry = \Drupal::service('theme.registry')->get();
+      $this->completeRegistry = theme_get_registry();
     }
-    $this->storage[$key] = $this->completeRegistry[$key];
+    $this->storage[$offset] = $this->completeRegistry[$offset];
     if ($this->persistable) {
-      $this->persist($key);
+      $this->persist($offset);
     }
-    return $this->storage[$key];
+    return $this->storage[$offset];
   }
 
   /**
-   * {@inheritdoc}
+   * Overrides CacheArray::set().
    */
-  protected function updateCache($lock = TRUE) {
-    if (!$this->persistable) {
-      return;
-    }
-    // @todo: Is the custom implementation necessary?
-    $data = array();
-    foreach ($this->keysToPersist as $offset => $persist) {
-      if ($persist) {
-        $data[$offset] = $this->storage[$offset];
-      }
-    }
-    if (empty($data)) {
-      return;
-    }
-
-    $lock_name = $this->cid . ':' . __CLASS__;
-    if (!$lock || $this->lock->acquire($lock_name)) {
-      if ($cached = $this->cache->get($this->cid)) {
+  public function set($data, $lock = TRUE) {
+    $lock_name = $this->cid . ':' . $this->bin;
+    if (!$lock || lock()->acquire($lock_name)) {
+      if ($cached = cache($this->bin)->get($this->cid)) {
         // Use array merge instead of union so that filled in values in $data
         // overwrite empty values in the current cache.
         $data = array_merge($cached->data, $data);
@@ -162,11 +134,10 @@ class ThemeRegistry extends CacheCollector implements DestructableInterface {
         $registry = $this->initializeRegistry();
         $data = array_merge($registry, $data);
       }
-      $this->cache->set($this->cid, $data, Cache::PERMANENT, $this->tags);
+      cache($this->bin)->set($this->cid, $data, CacheBackendInterface::CACHE_PERMANENT, $this->tags);
       if ($lock) {
-        $this->lock->release($lock_name);
+        lock()->release($lock_name);
       }
     }
   }
-
 }

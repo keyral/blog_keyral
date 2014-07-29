@@ -7,6 +7,7 @@
 
 namespace Drupal\Core\Database;
 
+use Iterator;
 
 /**
  * Empty implementation of a database statement.
@@ -17,16 +18,9 @@ namespace Drupal\Core\Database;
  * database.  Calling code can then treat it the same as if it were an actual
  * result set that happens to contain no records.
  *
- * @see \Drupal\search\SearchQuery
+ * @see Drupal\search\SearchQuery
  */
-class StatementEmpty implements \Iterator, StatementInterface {
-
-  /**
-   * Is rowCount() execution allowed.
-   *
-   * @var bool
-   */
-  public $allowRowCount = FALSE;
+class StatementEmpty implements Iterator, StatementInterface {
 
   public function execute($args = array(), $options = array()) {
     return FALSE;
@@ -37,10 +31,7 @@ class StatementEmpty implements \Iterator, StatementInterface {
   }
 
   public function rowCount() {
-    if ($this->allowRowCount) {
-      return 0;
-    }
-    throw new RowCountException();
+    return 0;
   }
 
   public function setFetchMode($mode, $a1 = NULL, $a2 = array()) {

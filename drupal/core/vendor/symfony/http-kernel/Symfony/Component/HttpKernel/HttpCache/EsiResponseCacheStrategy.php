@@ -29,12 +29,13 @@ use Symfony\Component\HttpFoundation\Response;
 class EsiResponseCacheStrategy implements EsiResponseCacheStrategyInterface
 {
     private $cacheable = true;
-    private $embeddedResponses = 0;
     private $ttls = array();
     private $maxAges = array();
 
     /**
-     * {@inheritdoc}
+     * Adds a Response.
+     *
+     * @param Response $response
      */
     public function add(Response $response)
     {
@@ -44,27 +45,18 @@ class EsiResponseCacheStrategy implements EsiResponseCacheStrategyInterface
             $this->ttls[] = $response->getTtl();
             $this->maxAges[] = $response->getMaxAge();
         }
-
-        $this->embeddedResponses++;
     }
 
     /**
-     * {@inheritdoc}
+     * Updates the Response HTTP headers based on the embedded Responses.
+     *
+     * @param Response $response
      */
     public function update(Response $response)
     {
-        // if we have no embedded Response, do nothing
-        if (0 === $this->embeddedResponses) {
+        // if we only have one Response, do nothing
+        if (1 === count($this->ttls)) {
             return;
-        }
-
-        // Remove validation related headers in order to avoid browsers using
-        // their own cache, because some of the response content comes from
-        // at least one embedded response (which likely has a different caching strategy).
-        if ($response->isValidateable()) {
-            $response->setEtag(null);
-            $response->setLastModified(null);
-            $this->cacheable = false;
         }
 
         if (!$this->cacheable) {
@@ -72,9 +64,6 @@ class EsiResponseCacheStrategy implements EsiResponseCacheStrategyInterface
 
             return;
         }
-
-        $this->ttls[] = $response->getTtl();
-        $this->maxAges[] = $response->getMaxAge();
 
         if (null !== $maxAge = min($this->maxAges)) {
             $response->setSharedMaxAge($maxAge);

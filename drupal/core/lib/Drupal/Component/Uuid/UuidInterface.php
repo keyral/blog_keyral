@@ -16,7 +16,7 @@ interface UuidInterface {
    * Generates a Universally Unique IDentifier (UUID).
    *
    * @return
-   *   A 16 byte integer represented as a hex string formatted with 4 hyphens.
+   *   A 32 byte integer represented as a hex string formatted with 4 hypens.
    */
   public function generate();
 }

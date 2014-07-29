@@ -14,11 +14,9 @@ namespace Symfony\Component\HttpFoundation\Session\Flash;
 /**
  * FlashBag flash message container.
  *
- * \IteratorAggregate implementation is deprecated and will be removed in 3.0.
- *
  * @author Drak <drak@zikula.org>
  */
-class FlashBag implements FlashBagInterface, \IteratorAggregate
+class FlashBag implements FlashBagInterface, \IteratorAggregate, \Countable
 {
     private $name = 'flashes';
 
@@ -78,7 +76,7 @@ class FlashBag implements FlashBagInterface, \IteratorAggregate
     /**
      * {@inheritdoc}
      */
-    public function peek($type, array $default = array())
+    public function peek($type, array $default =array())
     {
         return $this->has($type) ? $this->flashes[$type] : $default;
     }
@@ -169,12 +167,20 @@ class FlashBag implements FlashBagInterface, \IteratorAggregate
     /**
      * Returns an iterator for flashes.
      *
-     * @deprecated Will be removed in 3.0.
-     *
      * @return \ArrayIterator An \ArrayIterator instance
      */
     public function getIterator()
     {
         return new \ArrayIterator($this->all());
+    }
+
+    /**
+     * Returns the number of flashes.
+     *
+     * @return int The number of flashes
+     */
+    public function count()
+    {
+        return count($this->flashes);
     }
 }

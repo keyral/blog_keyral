@@ -8,12 +8,13 @@
 namespace Drupal\Core\Database\Query;
 
 use Drupal\Core\Database\Connection;
-use Drupal\Core\Database\InvalidQueryException;
+
+use Countable;
 
 /**
  * Generic class for a series of conditions in a query.
  */
-class Condition implements ConditionInterface, \Countable {
+class Condition implements ConditionInterface, Countable {
 
   /**
    * Array of conditions.
@@ -77,10 +78,6 @@ class Condition implements ConditionInterface, \Countable {
         $operator = '=';
       }
     }
-    if (empty($value) && is_array($value)) {
-      throw new InvalidQueryException(sprintf("Query condition '%s %s ()' cannot be empty.", $field, $operator));
-    }
-
     $this->conditions[] = array(
       'field' => $field,
       'value' => $value,
@@ -262,13 +259,8 @@ class Condition implements ConditionInterface, \Countable {
   function __clone() {
     $this->changed = TRUE;
     foreach ($this->conditions as $key => $condition) {
-      if ($key !== '#conjunction') {
-        if ($condition['field'] instanceOf ConditionInterface) {
-          $this->conditions[$key]['field'] = clone($condition['field']);
-        }
-        if ($condition['value'] instanceOf SelectInterface) {
-          $this->conditions[$key]['value'] = clone($condition['value']);
-        }
+      if ($key !== '#conjunction' && $condition['field'] instanceOf ConditionInterface) {
+        $this->conditions[$key]['field'] = clone($condition['field']);
       }
     }
   }
@@ -321,24 +313,4 @@ class Condition implements ConditionInterface, \Countable {
     return $return;
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function conditionGroupFactory($conjunction = 'AND') {
-    return new Condition($conjunction);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function andConditionGroup() {
-    return $this->conditionGroupFactory('AND');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function orConditionGroup() {
-    return $this->conditionGroupFactory('OR');
-  }
 }

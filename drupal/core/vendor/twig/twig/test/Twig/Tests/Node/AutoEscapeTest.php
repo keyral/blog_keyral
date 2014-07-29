@@ -9,15 +9,17 @@
  * file that was distributed with this source code.
  */
 
-class Twig_Tests_Node_AutoEscapeTest extends Twig_Test_NodeTestCase
+require_once dirname(__FILE__).'/TestCase.php';
+
+class Twig_Tests_Node_AutoEscapeTest extends Twig_Tests_Node_TestCase
 {
     /**
      * @covers Twig_Node_AutoEscape::__construct
      */
     public function testConstructor()
     {
-        $body = new Twig_Node(array(new Twig_Node_Text('foo', 1)));
-        $node = new Twig_Node_AutoEscape(true, $body, 1);
+        $body = new Twig_Node(array(new Twig_Node_Text('foo', 0)));
+        $node = new Twig_Node_AutoEscape(true, $body, 0);
 
         $this->assertEquals($body, $node->getNode('body'));
         $this->assertEquals(true, $node->getAttribute('value'));
@@ -34,11 +36,11 @@ class Twig_Tests_Node_AutoEscapeTest extends Twig_Test_NodeTestCase
 
     public function getTests()
     {
-        $body = new Twig_Node(array(new Twig_Node_Text('foo', 1)));
-        $node = new Twig_Node_AutoEscape(true, $body, 1);
+        $body = new Twig_Node(array(new Twig_Node_Text('foo', 0)));
+        $node = new Twig_Node_AutoEscape(true, $body, 0);
 
         return array(
-            array($node, "// line 1\necho \"foo\";"),
+            array($node, 'echo "foo";'),
         );
     }
 }

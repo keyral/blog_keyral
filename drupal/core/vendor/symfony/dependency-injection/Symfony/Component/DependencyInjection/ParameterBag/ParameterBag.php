@@ -24,8 +24,8 @@ use Symfony\Component\DependencyInjection\Exception\RuntimeException;
  */
 class ParameterBag implements ParameterBagInterface
 {
-    protected $parameters = array();
-    protected $resolved = false;
+    protected $parameters;
+    protected $resolved;
 
     /**
      * Constructor.
@@ -36,7 +36,9 @@ class ParameterBag implements ParameterBagInterface
      */
     public function __construct(array $parameters = array())
     {
+        $this->parameters = array();
         $this->add($parameters);
+        $this->resolved = false;
     }
 
     /**
@@ -82,7 +84,7 @@ class ParameterBag implements ParameterBagInterface
      *
      * @return mixed  The parameter value
      *
-     * @throws ParameterNotFoundException if the parameter is not defined
+     * @throws  ParameterNotFoundException if the parameter is not defined
      *
      * @api
      */
@@ -91,19 +93,7 @@ class ParameterBag implements ParameterBagInterface
         $name = strtolower($name);
 
         if (!array_key_exists($name, $this->parameters)) {
-            if (!$name) {
-                throw new ParameterNotFoundException($name);
-            }
-
-            $alternatives = array();
-            foreach (array_keys($this->parameters) as $key) {
-                $lev = levenshtein($name, $key);
-                if ($lev <= strlen($name) / 3 || false !== strpos($key, $name)) {
-                    $alternatives[] = $key;
-                }
-            }
-
-            throw new ParameterNotFoundException($name, null, null, null, $alternatives);
+            throw new ParameterNotFoundException($name);
         }
 
         return $this->parameters[$name];
@@ -139,13 +129,13 @@ class ParameterBag implements ParameterBagInterface
     /**
      * Removes a parameter.
      *
-     * @param string $name The parameter name
+     * @param string $key The key
      *
      * @api
      */
-    public function remove($name)
+    public function remove($key)
     {
-        unset($this->parameters[strtolower($name)]);
+        unset($this->parameters[$key]);
     }
 
     /**

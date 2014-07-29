@@ -3,7 +3,7 @@
 /*
  * This file is part of the Assetic package, an OpenSky project.
  *
- * (c) 2010-2013 OpenSky Project Inc
+ * (c) 2010-2012 OpenSky Project Inc
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -13,6 +13,7 @@ namespace Assetic\Filter;
 
 use Assetic\Asset\AssetInterface;
 use Assetic\Exception\FilterException;
+use Symfony\Component\Process\ProcessBuilder;
 
 /**
  * UglifyJs filter.
@@ -20,24 +21,23 @@ use Assetic\Exception\FilterException;
  * @link https://github.com/mishoo/UglifyJS
  * @author André Roaldseth <andre@roaldseth.net>
  */
-class UglifyJsFilter extends BaseNodeFilter
+class UglifyJsFilter implements FilterInterface
 {
-    private $uglifyjsBin;
-    private $nodeBin;
+    private $uglifyJsPath;
+    private $nodeJsPath;
 
     private $noCopyright;
     private $beautify;
     private $unsafe;
-    private $mangle;
 
     /**
-     * @param string $uglifyjsBin Absolute path to the uglifyjs executable
-     * @param string $nodeBin      Absolute path to the folder containg node.js executable
+     * @param string $uglifyJsPath Absolute path to the uglifyjs executable
+     * @param string $nodeJsPath   Absolute path to the folder containg node.js executable
      */
-    public function __construct($uglifyjsBin = '/usr/bin/uglifyjs', $nodeBin = null)
+    public function __construct($uglifyJsPath, $nodeJsPath = null)
     {
-        $this->uglifyjsBin = $uglifyjsBin;
-        $this->nodeBin = $nodeBin;
+        $this->uglifyJsPath = $uglifyJsPath;
+        $this->nodeJsPath = $nodeJsPath;
     }
 
     /**
@@ -68,15 +68,6 @@ class UglifyJsFilter extends BaseNodeFilter
     }
 
     /**
-     * Safely mangle variable and function names for greater file compress.
-     * @param bool $mangle True to enable
-     */
-    public function setMangle($mangle)
-    {
-        $this->mangle = $mangle;
-    }
-
-    /**
      * @see Assetic\Filter\FilterInterface::filterLoad()
      */
     public function filterLoad(AssetInterface $asset)
@@ -90,9 +81,15 @@ class UglifyJsFilter extends BaseNodeFilter
      */
     public function filterDump(AssetInterface $asset)
     {
-        $pb = $this->createProcessBuilder($this->nodeBin
-            ? array($this->nodeBin, $this->uglifyjsBin)
-            : array($this->uglifyjsBin));
+        $executables = array();
+
+        if ($this->nodeJsPath !== null) {
+            $executables[] = $this->nodeJsPath;
+        }
+
+        $executables[] = $this->uglifyJsPath;
+
+        $pb = new ProcessBuilder($executables);
 
         if ($this->noCopyright) {
             $pb->add('--no-copyright');
@@ -106,10 +103,6 @@ class UglifyJsFilter extends BaseNodeFilter
             $pb->add('--unsafe');
         }
 
-        if (false === $this->mangle) {
-            $pb->add('--no-mangle');
-        }
-
         // input and output files
         $input = tempnam(sys_get_temp_dir(), 'input');
         $output = tempnam(sys_get_temp_dir(), 'output');
@@ -121,7 +114,7 @@ class UglifyJsFilter extends BaseNodeFilter
         $code = $proc->run();
         unlink($input);
 
-        if (0 !== $code) {
+        if (0 < $code) {
             if (file_exists($output)) {
                 unlink($output);
             }
@@ -131,9 +124,7 @@ class UglifyJsFilter extends BaseNodeFilter
             }
 
             throw FilterException::fromProcess($proc)->setInput($asset->getContent());
-        }
-
-        if (!file_exists($output)) {
+        } elseif (!file_exists($output)) {
             throw new \RuntimeException('Error creating output file.');
         }
 

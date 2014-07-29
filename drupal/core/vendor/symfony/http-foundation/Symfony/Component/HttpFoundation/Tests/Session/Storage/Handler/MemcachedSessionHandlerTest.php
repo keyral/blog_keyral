@@ -13,7 +13,7 @@ namespace Symfony\Component\HttpFoundation\Tests\Session\Storage\Handler;
 
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
 
-class MemcachedSessionHandlerTest extends \PHPUnit_Framework_TestCase
+class MemcacheddSessionHandlerTest extends \PHPUnit_Framework_TestCase
 {
     const PREFIX = 'prefix_';
     const TTL = 1000;
@@ -28,7 +28,7 @@ class MemcachedSessionHandlerTest extends \PHPUnit_Framework_TestCase
     protected function setUp()
     {
         if (!class_exists('Memcached')) {
-            $this->markTestSkipped('Skipped tests Memcached class is not present');
+            $this->markTestSkipped('Skipped tests Memcache class is not present');
         }
 
         $this->memcached = $this->getMock('Memcached');
@@ -115,13 +115,5 @@ class MemcachedSessionHandlerTest extends \PHPUnit_Framework_TestCase
             array(array('prefix' => 'session', 'expiretime' => 200), true),
             array(array('expiretime' => 100, 'foo' => 'bar'), false),
         );
-    }
-
-    public function testGetConnection()
-    {
-        $method = new \ReflectionMethod($this->storage, 'getMemcached');
-        $method->setAccessible(true);
-
-        $this->assertInstanceOf('\Memcached', $method->invoke($this->storage));
     }
 }

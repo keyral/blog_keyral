@@ -1,8 +1,6 @@
+
 Drupal 8.0, xxxx-xx-xx (development version)
 ----------------------
-- Added Twig as the default template engine and converted all .tpl.php templates
-  to .html.twig.
-- Added tour module. Provides highly contextual tips for UI elements.
 - Improved entity system.
     * Added support for saving and deleting entities through the controller.
     * Entities are now classed objects, implementing EntityInterface.
@@ -17,7 +15,6 @@ Drupal 8.0, xxxx-xx-xx (development version)
     * Implements functionality to get, set, add and remove configuration.
     * Includes ability to override configuration values with language variants
       and other runtime values.
-- Added the CKEditor WYSIWYG editor. Provides a drag-and-drop configuration UI.
 - Included the HTML5 Shiv library to support HTML5 elements in IE 8 and below.
 - Included the following Symfony2 components:
     * ClassLoader - PSR-0-compatible autoload routines.
@@ -37,22 +34,16 @@ Drupal 8.0, xxxx-xx-xx (development version)
       modules with similar functionality are available:
       * Blog
       * Dashboard
-      * OpenID
-      * PHP Filter
-      * Poll
       * Profile
       * Trigger
-- Removed the Overlay module from core.
 - Removed the Garland theme from core.
-- Removed the Statistics module's accesslog functionality and reports from core.
 - Removed backwards-compatibility with 'magic_quotes_gpc'/'magic_quotes_runtime'
   PHP configuration settings. Both are required to be disabled.
 - Universally Unique IDentifier (UUID):
     * Support for generating and validating UUIDs.
 - JavaScript changes:
-    * Updated to jQuery 2.1.0
-    * Updated to jQuery UI 1.10.2
-    * Removed jquery.bbq
+    * Updated to jQuery 1.7
+    * Updated to jQuery UI 1.9
 - Tremendously improved language support all around.
     * Great language improvements for users:
       * Improved language selection with user preference detection in the
@@ -78,23 +69,15 @@ Drupal 8.0, xxxx-xx-xx (development version)
       * All Gettext files are now imported in chunks, better for low resource
         environments.
     * Improved content language support:
-      * Made it possible to assign language to taxonomy terms, vocabularies,
-        menu items, and files.
-      * Added a field translation based content translation module that applies
-        to all content entities.
-      * Removed the old node-copy based content translation module.
-      * Introduced language defaults configuration for each entity type and
-        subtype.
+      * Freely orderable language selector in forms.
+      * Made it possible to assign language to taxonomy terms, vocabularies
+        and files.
+      * Node type specific default language assignment is much more versatile.
       * Added entity language variance support to search module.
       * Search indexing and query preprocessors now get language information.
       * Unified content translation permission granularity with content editing
         permissions.
-      * Made the language selector freely orderable in entity forms.
-    * Better configuration language support
-      * Added language selectors to most configuration options (views, menus,
-        etc.)
-      * Added a configuration translation user interface that works with any
-        configuration with translatable values (blocks, views, fields, etc).
+    * Better language based configuration
       * Added language options to block visibility.
     * Much improved language APIs for developers:
       * Added simple APIs and hooks to save/delete/update languages.
@@ -106,27 +89,16 @@ Drupal 8.0, xxxx-xx-xx (development version)
       * Made it possible for users to have a preferred language separate from
         their user entity language.
       * The text formatter from t() is now available as format_string().
-      * Added support for interface translation contexts in Drupal.t(),
-        Drupal.formatPlural() as well as routing, tabs, actions, and contextual
-        links.
+      * Added support for interface translation contexts in Drupal.t() and
+        Drupal.formatPlural() in JavaScript.
       * Removed textgroups support from interface translation in favor of
         native configuration language support.
-      * Added configuration schema system to support generating translation
-        forms for any configuration.
       * Reworked Gettext PO support to use pluggable read/write handlers.
       * Added language select form element in the Form API.
-- Added Email field type to core.
+- Added E-mail field type to core.
 - Added Link field type to core.
-- Added Phone number field type to core.
 - Added local image input filter, to enable secure image posting.
 - Added Views and Views UI module to core.
-- Added Entity Reference field type to core.
-- Added Date field type to core.
-- Added a Web Services module package.
-    * Added a RESTful web services provider module.
-    * Added a serialization module using the Symfony serialization component.
-    * Added a Hypertext Application Language (HAL) serialization module.
-    * Added a HTTP Basic authentication provider module.
 
 Drupal 7.0, 2011-01-05
 ----------------------
@@ -134,8 +106,8 @@ Drupal 7.0, 2011-01-05
     * Fully rewritten database layer utilizing PHP 5's PDO abstraction layer.
     * Drupal now requires MySQL >= 5.0.15 or PostgreSQL >= 8.3.
     * Added query builders for INSERT, UPDATE, DELETE, MERGE, and SELECT queries.
-    * Support for primary/replica replication, transactions, multi-insert
-      queries, and other features.
+    * Support for master/slave replication, transactions, multi-insert queries,
+      and other features.
     * Added support for the SQLite database engine.
     * Default to InnoDB engine, rather than MyISAM, on MySQL when available.
       This offers increased scalability and data integrity.
@@ -223,7 +195,7 @@ Drupal 7.0, 2011-01-05
       user roles and permissions.
     * Refactored the "access rules" component of user module: The user module
       now provides a simple interface for blocking single IP addresses. The
-      previous functionality in the user module for restricting certain email
+      previous functionality in the user module for restricting certain e-mail
       addresses and usernames is now available as a contributed module. Further,
       IP address range blocking is no longer supported and should be implemented
       at the operating system level.
@@ -359,7 +331,7 @@ Drupal 6.0, 2008-02-13
      default in the default installation profile.
    * Extended the database log module so log messages can be filtered.
    * Added syslog module: useful for monitoring large Drupal installations.
-- Added optional email notifications when users are approved, blocked, or
+- Added optional e-mail notifications when users are approved, blocked, or
   deleted.
 - Drupal works with error reporting set to E_ALL.
 - Added scripts/drupal.sh to execute Drupal code from the command line. Useful
@@ -541,7 +513,7 @@ Drupal 5.0, 2007-01-15
     * 'Blogapi new' and 'blogapi edit' nodeapi operations.
 - User module:
     * Added hook_profile_alter().
-    * Email verification is made optional.
+    * E-mail verification is made optional.
     * Added mass editing and filtering on admin/user/user.
 - PHP Template engine:
     * Add the ability to look for a series of suggested templates.
@@ -766,7 +738,7 @@ Drupal 4.6.0, 2005-04-15
     * Introduced forum configuration pages.
     * Added a 'add child page' link to book pages.
 - Contact module:
-    * Added a simple contact module that allows users to contact each other using email.
+    * Added a simple contact module that allows users to contact each other using e-mail.
 - Multi-site configuration:
     * Made it possible to run multiple sites from a single code base.
 - Added an image API: enables better image handling.
@@ -1113,7 +1085,7 @@ Drupal 3.0.0, 2001-09-15
     * Improved scheduler:
         + Content can be scheduled to be 'posted', 'queued' and 'hidden'.
     * Improved account module:
-        + Added "access control" to allow/deny certain usernames/email addresses/hostnames.
+        + Added "access control" to allow/deny certain usernames/e-mail addresses/hostnames.
     * Improved locale module:
         + Added new overview to easy the translation process.
     * Improved comment module:

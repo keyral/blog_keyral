@@ -12,14 +12,11 @@
 namespace Symfony\Component\DependencyInjection\Dumper;
 
 use Symfony\Component\Yaml\Dumper as YmlDumper;
-use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\ExpressionLanguage\Expression;
 
 /**
  * YamlDumper dumps a service container as a YAML string.
@@ -75,10 +72,6 @@ class YamlDumper extends Dumper
             $code .= sprintf("        class: %s\n", $definition->getClass());
         }
 
-        if (!$definition->isPublic()) {
-            $code .= "        public: false\n";
-        }
-
         $tagsCode = '';
         foreach ($definition->getTags() as $name => $tags) {
             foreach ($tags as $attributes) {
@@ -97,22 +90,6 @@ class YamlDumper extends Dumper
 
         if ($definition->getFile()) {
             $code .= sprintf("        file: %s\n", $definition->getFile());
-        }
-
-        if ($definition->isSynthetic()) {
-            $code .= sprintf("        synthetic: true\n");
-        }
-
-        if ($definition->isSynchronized()) {
-            $code .= sprintf("        synchronized: true\n");
-        }
-
-        if ($definition->getFactoryClass()) {
-            $code .= sprintf("        factory_class: %s\n", $definition->getFactoryClass());
-        }
-
-        if ($definition->isLazy()) {
-            $code .= sprintf("        lazy: true\n");
         }
 
         if ($definition->getFactoryMethod()) {
@@ -141,7 +118,7 @@ class YamlDumper extends Dumper
 
         if ($callable = $definition->getConfigurator()) {
             if (is_array($callable)) {
-                if ($callable[0] instanceof Reference) {
+                if (is_object($callable[0]) && $callable[0] instanceof Reference) {
                     $callable = array($this->getServiceCall((string) $callable[0], $callable[0]), $callable[1]);
                 } else {
                     $callable = array($callable[0], $callable[1]);
@@ -158,7 +135,7 @@ class YamlDumper extends Dumper
      * Adds a service alias
      *
      * @param string $alias
-     * @param Alias  $id
+     * @param string $id
      *
      * @return string
      */
@@ -187,11 +164,7 @@ class YamlDumper extends Dumper
             $code .= $this->addService($id, $definition);
         }
 
-        $aliases = $this->container->getAliases();
-        foreach ($aliases as $alias => $id) {
-            while (isset($aliases[(string) $id])) {
-                $id = $aliases[(string) $id];
-            }
+        foreach ($this->container->getAliases() as $alias => $id) {
             $code .= $this->addServiceAlias($alias, $id);
         }
 
@@ -209,7 +182,11 @@ class YamlDumper extends Dumper
             return '';
         }
 
-        $parameters = $this->prepareParameters($this->container->getParameterBag()->all(), $this->container->isFrozen());
+        if ($this->container->isFrozen()) {
+            $parameters = $this->prepareParameters($this->container->getParameterBag()->all());
+        } else {
+            $parameters = $this->container->getParameterBag()->all();
+        }
 
         return $this->dumper->dump(array('parameters' => $parameters), 2);
     }
@@ -218,8 +195,6 @@ class YamlDumper extends Dumper
      * Dumps the value to YAML format
      *
      * @param mixed $value
-     *
-     * @return mixed
      *
      * @throws RuntimeException When trying to dump object or resource
      */
@@ -232,12 +207,10 @@ class YamlDumper extends Dumper
             }
 
             return $code;
-        } elseif ($value instanceof Reference) {
+        } elseif (is_object($value) && $value instanceof Reference) {
             return $this->getServiceCall((string) $value, $value);
-        } elseif ($value instanceof Parameter) {
+        } elseif (is_object($value) && $value instanceof Parameter) {
             return $this->getParameterCall((string) $value);
-        } elseif ($value instanceof Expression) {
-            return $this->getExpressionCall((string) $value);
         } elseif (is_object($value) || is_resource($value)) {
             throw new RuntimeException('Unable to dump a service container if a parameter is an object or a resource.');
         }
@@ -274,33 +247,27 @@ class YamlDumper extends Dumper
         return sprintf('%%%s%%', $id);
     }
 
-    private function getExpressionCall($expression)
-    {
-        return sprintf('@=%s', $expression);
-    }
-
     /**
-     * Prepares parameters.
+     * Prepares parameters
      *
-     * @param array   $parameters
-     * @param Boolean $escape
+     * @param array $parameters
      *
      * @return array
      */
-    private function prepareParameters($parameters, $escape = true)
+    private function prepareParameters($parameters)
     {
         $filtered = array();
         foreach ($parameters as $key => $value) {
             if (is_array($value)) {
-                $value = $this->prepareParameters($value, $escape);
-            } elseif ($value instanceof Reference || is_string($value) && 0 === strpos($value, '@')) {
+                $value = $this->prepareParameters($value);
+            } elseif ($value instanceof Reference) {
                 $value = '@'.$value;
             }
 
             $filtered[$key] = $value;
         }
 
-        return $escape ? $this->escape($filtered) : $filtered;
+        return $this->escape($filtered);
     }
 
     /**

@@ -2,19 +2,24 @@
 
 /**
  * @file
- * Contains \Drupal\Core\Template\AttributeValueBase.
+ * Definition of Drupal\Core\Template\AttributeValueBase.
  */
 
 namespace Drupal\Core\Template;
 
-use Drupal\Component\Utility\String;
-
 /**
  * Defines the base class for an attribute type.
  *
- * @see \Drupal\Core\Template\Attribute
+ * @see Drupal\Core\Template\Attribute
  */
 abstract class AttributeValueBase {
+
+  /**
+   * Whether this attribute hsa been printed already.
+   *
+   * @var bool
+   */
+  protected $printed = FALSE;
 
   /**
    * The value itself.
@@ -48,9 +53,17 @@ abstract class AttributeValueBase {
    *   The string representation of the attribute.
    */
   public function render() {
-    if (isset($this->value)) {
-      return String::checkPlain($this->name) . '="' . $this . '"';
-    }
+    return $this->name . '="' . $this . '"';
+  }
+
+  /**
+   * Whether this attribute hsa been printed already.
+   *
+   * @return bool
+   *   TRUE if this attribute has been printed, FALSE otherwise.
+   */
+  public function printed() {
+    return $this->printed;
   }
 
   /**

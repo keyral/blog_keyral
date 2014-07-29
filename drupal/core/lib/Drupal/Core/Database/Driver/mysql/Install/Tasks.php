@@ -24,21 +24,22 @@ class Tasks extends InstallTasks {
   protected $pdoDriver = 'mysql';
 
   /**
-   * {@inheritdoc}
+   * Returns a human-readable name string for MySQL and equivalent databases.
    */
   public function name() {
-    return t('MySQL, MariaDB, Percona Server, or equivalent');
+    return st('MySQL, MariaDB, or equivalent');
   }
 
   /**
-   * {@inheritdoc}
+   * Returns the minimum version for MySQL.
    */
   public function minimumVersion() {
     return '5.0.15';
   }
 
   /**
-   * {@inheritdoc}
+   * Check database connection and attempt to create database if the database is
+   * missing.
    */
   protected function connect() {
     try {
@@ -69,28 +70,16 @@ class Tasks extends InstallTasks {
         catch (DatabaseNotFoundException $e) {
           // Still no dice; probably a permission issue. Raise the error to the
           // installer.
-          $this->fail(t('Database %database not found. The server reports the following message when attempting to create the database: %error.', array('%database' => $database, '%error' => $e->getMessage())));
+          $this->fail(st('Database %database not found. The server reports the following message when attempting to create the database: %error.', array('%database' => $database, '%error' => $e->getMessage())));
         }
       }
       else {
         // Database connection failed for some other reason than the database
         // not existing.
-        $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist or does the database user have sufficient privileges to create the database?</li><li>Have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', array('%error' => $e->getMessage())));
+        $this->fail(st('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist or does the database user have sufficient privileges to create the database?</li><li>Have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', array('%error' => $e->getMessage())));
         return FALSE;
       }
     }
     return TRUE;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getFormOptions(array $database) {
-    $form = parent::getFormOptions($database);
-    if (empty($form['advanced_options']['port']['#default_value'])) {
-      $form['advanced_options']['port']['#default_value'] = '3306';
-    }
-
-    return $form;
   }
 }

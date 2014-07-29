@@ -7,8 +7,6 @@
 
 namespace Drupal\Core\Password;
 
-use Drupal\user\UserInterface;
-
 /**
  * Secure password hashing functions for user authentication.
  */
@@ -34,13 +32,13 @@ interface PasswordInterface {
    *
    * @param string $password
    *   A plain-text password
-   * @param \Drupal\user\UserInterface $account
-   *   A user entity.
+   * @param Drupal\user\User
+   *   A user object with at least the fields from the {users} table.
    *
-   * @return bool
-   *   TRUE if the password is valid, FALSE if not.
+   * @return bolean.
+   *   TRUE or FALSE.
    */
-  public function check($password, UserInterface $account);
+  public function check($password, $account);
 
   /**
    * Check whether a user's hashed password needs to be replaced with a new hash.
@@ -55,12 +53,12 @@ interface PasswordInterface {
    * Alternative implementations of this function might use other criteria based
    * on the fields in $account.
    *
-   * @param \Drupal\user\UserInterface $account
-   *   A user entity.
+   * @param Drupal\user\User
+   *   A user object with at least the fields from the {users} table.
    *
    * @return boolean
    *   TRUE or FALSE.
    */
-  public function userNeedsNewHash(UserInterface $account);
+  public function userNeedsNewHash($account);
 
 }

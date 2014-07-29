@@ -2,7 +2,6 @@
 
 /*
  * This file is part of the Symfony package.
- *
  * (c) Fabien Potencier <fabien@symfony.com>
  *
  * For the full copyright and license information, please view the LICENSE
@@ -49,7 +48,7 @@ class Unescaper
     public function unescapeDoubleQuotedString($value)
     {
         $self = $this;
-        $callback = function ($match) use ($self) {
+        $callback = function($match) use ($self) {
             return $self->unescapeCharacter($match[0]);
         };
 

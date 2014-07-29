@@ -10,6 +10,9 @@ namespace Drupal\Core\Database;
 use Drupal\Core\Database\TransactionNoActiveException;
 use Drupal\Core\Database\TransactionOutOfOrderException;
 
+use PDO;
+use PDOException;
+
 /**
  * Base Database API class.
  *
@@ -20,7 +23,7 @@ use Drupal\Core\Database\TransactionOutOfOrderException;
  *
  * @see http://php.net/manual/book.pdo.php
  */
-abstract class Connection implements \Serializable {
+abstract class Connection extends PDO {
 
   /**
    * The database target this connection is for.
@@ -35,8 +38,8 @@ abstract class Connection implements \Serializable {
    * The key representing this connection.
    *
    * The key is a unique string which identifies a database connection. A
-   * connection can be a single server or a cluster of primary and replicas
-   * (use target to pick between primary and replica).
+   * connection can be a single server or a cluster of master and slaves (use
+   * target to pick between master and slave).
    *
    * @var string
    */
@@ -98,13 +101,6 @@ abstract class Connection implements \Serializable {
   protected $temporaryNameIndex = 0;
 
   /**
-   * The actual PDO connection.
-   *
-   * @var \PDO
-   */
-  protected $connection;
-
-  /**
    * The connection information for this connection object.
    *
    * @var array
@@ -139,32 +135,21 @@ abstract class Connection implements \Serializable {
    */
   protected $prefixReplace = array();
 
-  /**
-   * Constructs a Connection object.
-   */
-  public function __construct(\PDO $connection, array $connection_options) {
+  function __construct($dsn, $username, $password, $driver_options = array()) {
     // Initialize and prepare the connection prefix.
-    $this->setPrefix(isset($connection_options['prefix']) ? $connection_options['prefix'] : '');
+    $this->setPrefix(isset($this->connectionOptions['prefix']) ? $this->connectionOptions['prefix'] : '');
+
+    // Because the other methods don't seem to work right.
+    $driver_options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
+
+    // Call PDO::__construct and PDO::setAttribute.
+    parent::__construct($dsn, $username, $password, $driver_options);
 
     // Set a Statement class, unless the driver opted out.
     if (!empty($this->statementClass)) {
-      $connection->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array($this->statementClass, array($this)));
+      $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array($this->statementClass, array($this)));
     }
-
-    $this->connection = $connection;
-    $this->connectionOptions = $connection_options;
   }
-
-  /**
-   * Opens a PDO connection.
-   *
-   * @param array $connection_options
-   *   The database connection settings array.
-   *
-   * @return \PDO
-   *   A \PDO object.
-   */
-  public static function open(array &$connection_options = array()) { }
 
   /**
    * Destroys this Connection object.
@@ -178,7 +163,7 @@ abstract class Connection implements \Serializable {
     // Destroy all references to this connection by setting them to NULL.
     // The Statement class attribute only accepts a new value that presents a
     // proper callable, so we reset it to PDOStatement.
-    $this->connection->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array('PDOStatement', array()));
+    $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('PDOStatement', array()));
     $this->schema = NULL;
   }
 
@@ -188,7 +173,7 @@ abstract class Connection implements \Serializable {
    * A given query can be customized with a number of option flags in an
    * associative array:
    * - target: The database "target" against which to execute a query. Valid
-   *   values are "default" or "replica". The system will first try to open a
+   *   values are "default" or "slave". The system will first try to open a
    *   connection to a database specified with the user-supplied key. If one
    *   is not available, it will silently fall back to the "default" target.
    *   If multiple databases connections are specified with the same target,
@@ -230,7 +215,7 @@ abstract class Connection implements \Serializable {
   protected function defaultOptions() {
     return array(
       'target' => 'default',
-      'fetch' => \PDO::FETCH_OBJ,
+      'fetch' => PDO::FETCH_OBJ,
       'return' => Database::RETURN_STATEMENT,
       'throw_exception' => TRUE,
     );
@@ -327,13 +312,14 @@ abstract class Connection implements \Serializable {
    *   The query string as SQL, with curly-braces surrounding the
    *   table names.
    *
-   * @return \Drupal\Core\Database\StatementInterface
+   * @return Drupal\Core\Database\StatementInterface
    *   A PDO prepared statement ready for its execute() method.
    */
   public function prepareQuery($query) {
     $query = $this->prefixTables($query);
 
-    return $this->connection->prepare($query);
+    // Call PDO::prepare.
+    return parent::prepare($query);
   }
 
   /**
@@ -399,7 +385,7 @@ abstract class Connection implements \Serializable {
   /**
    * Gets the current logging object for this connection.
    *
-   * @return \Drupal\Core\Database\Log
+   * @return DatabaseLog
    *   The current logging object for this connection. If there isn't one,
    *   NULL is returned.
    */
@@ -492,9 +478,9 @@ abstract class Connection implements \Serializable {
    * @param $query
    *   The query to execute. In most cases this will be a string containing
    *   an SQL query with placeholders. An already-prepared instance of
-   *   StatementInterface may also be passed in order to allow calling
+   *   DatabaseStatementInterface may also be passed in order to allow calling
    *   code to manually bind variables to a query. If a
-   *   StatementInterface is passed, the $args array will be ignored.
+   *   DatabaseStatementInterface is passed, the $args array will be ignored.
    *   It is extremely rare that module code will need to pass a statement
    *   object to this method. It is used primarily for database drivers for
    *   databases that require special LOB field handling.
@@ -506,7 +492,7 @@ abstract class Connection implements \Serializable {
    *   An associative array of options to control how the query is run. See
    *   the documentation for DatabaseConnection::defaultOptions() for details.
    *
-   * @return \Drupal\Core\Database\StatementInterface
+   * @return Drupal\Core\Database\StatementInterface
    *   This method will return one of: the executed statement, the number of
    *   rows affected by the query (not the number matched), or the generated
    *   insert ID of the last query, depending on the value of
@@ -515,8 +501,8 @@ abstract class Connection implements \Serializable {
    *   this method will return NULL and may throw an exception if
    *   $options['throw_exception'] is TRUE.
    *
-   * @throws \PDOException
-   * @throws \Drupal\Core\Database\IntegrityConstraintViolationException
+   * @throws PDOException
+   * @throws Drupal\Core\Database\IntegrityConstraintViolationException
    */
   public function query($query, array $args = array(), $options = array()) {
 
@@ -527,7 +513,7 @@ abstract class Connection implements \Serializable {
       // We allow either a pre-bound statement object or a literal string.
       // In either case, we want to end up with an executed statement object,
       // which we pass to PDOStatement::execute.
-      if ($query instanceof StatementInterface) {
+      if ($query instanceof DatabaseStatementInterface) {
         $stmt = $query;
         $stmt->execute(NULL, $options);
       }
@@ -544,22 +530,21 @@ abstract class Connection implements \Serializable {
         case Database::RETURN_STATEMENT:
           return $stmt;
         case Database::RETURN_AFFECTED:
-          $stmt->allowRowCount = TRUE;
           return $stmt->rowCount();
         case Database::RETURN_INSERT_ID:
-          return $this->connection->lastInsertId();
+          return $this->lastInsertId();
         case Database::RETURN_NULL:
           return;
         default:
-          throw new \PDOException('Invalid return directive: ' . $options['return']);
+          throw new PDOException('Invalid return directive: ' . $options['return']);
       }
     }
-    catch (\PDOException $e) {
+    catch (PDOException $e) {
       if ($options['throw_exception']) {
         // Wrap the exception in another exception, because PHP does not allow
         // overriding Exception::getMessage(). Its message is the extra database
         // debug information.
-        $query_string = ($query instanceof StatementInterface) ? $stmt->getQueryString() : $query;
+        $query_string = ($query instanceof DatabaseStatementInterface) ? $stmt->getQueryString() : $query;
         $message = $e->getMessage() . ": " . $query_string . "; " . print_r($args, TRUE);
         // Match all SQLSTATE 23xxx errors.
         if (substr($e->getCode(), -6, -3) == '23') {
@@ -635,13 +620,7 @@ abstract class Connection implements \Serializable {
   public function getDriverClass($class) {
     if (empty($this->driverClasses[$class])) {
       $driver = $this->driver();
-      if (!empty($this->connectionOptions['namespace'])) {
-        $driver_class  = $this->connectionOptions['namespace'] . '\\' . $class;
-      }
-      else {
-        // Fallback for Drupal 7 settings.php.
-        $driver_class = "Drupal\\Core\\Database\\Driver\\{$driver}\\{$class}";
-      }
+      $driver_class = "Drupal\\Core\\Database\\Driver\\{$driver}\\{$class}";
       $this->driverClasses[$class] = class_exists($driver_class) ? $driver_class : $class;
     }
     return $this->driverClasses[$class];
@@ -664,7 +643,7 @@ abstract class Connection implements \Serializable {
    *   it may be a driver-specific subclass of SelectQuery, depending on the
    *   driver.
    *
-   * @see \Drupal\Core\Database\Query\Select
+   * @see Drupal\Core\Database\Query\Select
    */
   public function select($table, $alias = NULL, array $options = array()) {
     $class = $this->getDriverClass('Select');
@@ -677,10 +656,10 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\Query\Insert
+   * @return Drupal\Core\Database\Query\Insert
    *   A new Insert query object.
    *
-   * @see \Drupal\Core\Database\Query\Insert
+   * @see Drupal\Core\Database\Query\Insert
    */
   public function insert($table, array $options = array()) {
     $class = $this->getDriverClass('Insert');
@@ -693,10 +672,10 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\Query\Merge
+   * @return Drupal\Core\Database\Query\Merge
    *   A new Merge query object.
    *
-   * @see \Drupal\Core\Database\Query\Merge
+   * @see Drupal\Core\Database\Query\Merge
    */
   public function merge($table, array $options = array()) {
     $class = $this->getDriverClass('Merge');
@@ -710,10 +689,10 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\Query\Update
+   * @return Drupal\Core\Database\Query\Update
    *   A new Update query object.
    *
-   * @see \Drupal\Core\Database\Query\Update
+   * @see Drupal\Core\Database\Query\Update
    */
   public function update($table, array $options = array()) {
     $class = $this->getDriverClass('Update');
@@ -726,10 +705,10 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\Query\Delete
+   * @return Drupal\Core\Database\Query\Delete
    *   A new Delete query object.
    *
-   * @see \Drupal\Core\Database\Query\Delete
+   * @see Drupal\Core\Database\Query\Delete
    */
   public function delete($table, array $options = array()) {
     $class = $this->getDriverClass('Delete');
@@ -742,10 +721,10 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\Query\Truncate
+   * @return Drupal\Core\Database\Query\Truncate
    *   A new Truncate query object.
    *
-   * @see \Drupal\Core\Database\Query\Truncate
+   * @see Drupal\Core\Database\Query\Truncate
    */
   public function truncate($table, array $options = array()) {
     $class = $this->getDriverClass('Truncate');
@@ -757,7 +736,7 @@ abstract class Connection implements \Serializable {
    *
    * This method will lazy-load the appropriate schema library file.
    *
-   * @return \Drupal\Core\Database\Schema
+   * @return Drupal\Core\Database\Schema
    *   The database Schema object for this connection.
    */
   public function schema() {
@@ -877,10 +856,10 @@ abstract class Connection implements \Serializable {
    * @param $name
    *   Optional name of the savepoint.
    *
-   * @return \Drupal\Core\Database\Transaction
-   *   A Transaction object.
+   * @return Drupal\Core\Database\Transaction
+   *   A DatabaseTransaction object.
    *
-   * @see \Drupal\Core\Database\Transaction
+   * @see Drupal\Core\Database\Transaction
    */
   public function startTransaction($name = '') {
     $class = $this->getDriverClass('Transaction');
@@ -896,9 +875,9 @@ abstract class Connection implements \Serializable {
    *   The name of the savepoint. The default, 'drupal_transaction', will roll
    *   the entire transaction back.
    *
-   * @throws \Drupal\Core\Database\TransactionNoActiveException
+   * @throws Drupal\Core\Database\TransactionNoActiveException
    *
-   * @see \Drupal\Core\Database\Transaction::rollback()
+   * @see DatabaseTransaction::rollback()
    */
   public function rollback($savepoint_name = 'drupal_transaction') {
     if (!$this->supportsTransactions()) {
@@ -936,7 +915,7 @@ abstract class Connection implements \Serializable {
         $rolled_back_other_active_savepoints = TRUE;
       }
     }
-    $this->connection->rollBack();
+    parent::rollBack();
     if ($rolled_back_other_active_savepoints) {
       throw new TransactionOutOfOrderException();
     }
@@ -947,9 +926,9 @@ abstract class Connection implements \Serializable {
    *
    * If no transaction is already active, we begin a new transaction.
    *
-   * @throws \Drupal\Core\Database\TransactionNameNonUniqueException
+   * @throws Drupal\Core\Database\TransactionNameNonUniqueException
    *
-   * @see \Drupal\Core\Database\Transaction
+   * @see Drupal\Core\Database\Transaction
    */
   public function pushTransaction($name) {
     if (!$this->supportsTransactions()) {
@@ -964,7 +943,7 @@ abstract class Connection implements \Serializable {
       $this->query('SAVEPOINT ' . $name);
     }
     else {
-      $this->connection->beginTransaction();
+      parent::beginTransaction();
     }
     $this->transactionLayers[$name] = $name;
   }
@@ -979,10 +958,10 @@ abstract class Connection implements \Serializable {
    * @param $name
    *   The name of the savepoint
    *
-   * @throws \Drupal\Core\Database\TransactionNoActiveException
-   * @throws \Drupal\Core\Database\TransactionCommitFailedException
+   * @throws Drupal\Core\Database\TransactionNoActiveException
+   * @throws Drupal\Core\Database\TransactionCommitFailedException
    *
-   * @see \Drupal\Core\Database\Transaction
+   * @see DatabaseTransaction
    */
   public function popTransaction($name) {
     if (!$this->supportsTransactions()) {
@@ -1015,7 +994,7 @@ abstract class Connection implements \Serializable {
       // If there are no more layers left then we should commit.
       unset($this->transactionLayers[$name]);
       if (empty($this->transactionLayers)) {
-        if (!$this->connection->commit()) {
+        if (!parent::commit()) {
           throw new TransactionCommitFailedException();
         }
       }
@@ -1044,7 +1023,7 @@ abstract class Connection implements \Serializable {
    * @param $options
    *   An array of options on the query.
    *
-   * @return \Drupal\Core\Database\StatementInterface
+   * @return Drupal\Core\Database\StatementInterface
    *   A database query result resource, or NULL if the query was not executed
    *   correctly.
    */
@@ -1099,7 +1078,7 @@ abstract class Connection implements \Serializable {
    * Returns the version of the database server.
    */
   public function version() {
-    return $this->connection->getAttribute(\PDO::ATTR_SERVER_VERSION);
+    return $this->getAttribute(PDO::ATTR_SERVER_VERSION);
   }
 
   /**
@@ -1155,7 +1134,7 @@ abstract class Connection implements \Serializable {
    * @return
    *   The extra handling directives for the specified operator, or NULL.
    *
-   * @see \Drupal\Core\Database\Query\Condition::compile()
+   * @see Drupal\Core\Database\Query\Condition::compile()
    */
   abstract public function mapConditionOperator($operator);
 
@@ -1167,9 +1146,9 @@ abstract class Connection implements \Serializable {
    * A direct commit bypasses all of the safety checks we've built on top of
    * PDO's transaction routines.
    *
-   * @throws \Drupal\Core\Database\TransactionExplicitCommitNotAllowedException
+   * @throws Drupal\Core\Database\TransactionExplicitCommitNotAllowedException
    *
-   * @see \Drupal\Core\Database\Transaction
+   * @see Drupal\Core\Database\Transaction
    */
   public function commit() {
     throw new TransactionExplicitCommitNotAllowedException();
@@ -1193,81 +1172,4 @@ abstract class Connection implements \Serializable {
    *   also larger than the $existing_id if one was passed in.
    */
   abstract public function nextId($existing_id = 0);
-
-  /**
-   * Prepares a statement for execution and returns a statement object
-   *
-   * Emulated prepared statements does not communicate with the database server
-   * so this method does not check the statement.
-   *
-   * @param string $statement
-   *   This must be a valid SQL statement for the target database server.
-   * @param array $driver_options
-   *   (optional) This array holds one or more key=>value pairs to set
-   *   attribute values for the PDOStatement object that this method returns.
-   *   You would most commonly use this to set the \PDO::ATTR_CURSOR value to
-   *   \PDO::CURSOR_SCROLL to request a scrollable cursor. Some drivers have
-   *   driver specific options that may be set at prepare-time. Defaults to an
-   *   empty array.
-   *
-   * @return \PDOStatement|false
-   *   If the database server successfully prepares the statement, returns a
-   *   \PDOStatement object.
-   *   If the database server cannot successfully prepare the statement  returns
-   *   FALSE or emits \PDOException (depending on error handling).
-   *
-   * @throws \PDOException
-   *
-   * @see \PDO::prepare()
-   */
-  public function prepare($statement, array $driver_options = array()) {
-    return $this->connection->prepare($statement, $driver_options);
-  }
-
-  /**
-   * Quotes a string for use in a query.
-   *
-   * @param string $string
-   *   The string to be quoted.
-   * @param int $parameter_type
-   *   (optional) Provides a data type hint for drivers that have alternate
-   *   quoting styles. Defaults to \PDO::PARAM_STR.
-   *
-   * @return string|bool
-   *   A quoted string that is theoretically safe to pass into an SQL statement.
-   *   Returns FALSE if the driver does not support quoting in this way.
-   *
-   * @see \PDO::quote()
-   */
-  public function quote($string, $parameter_type = \PDO::PARAM_STR) {
-    return $this->connection->quote($string, $parameter_type);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function serialize() {
-    $connection = clone $this;
-    // Don't serialize the PDO connection and other lazy-instantiated members.
-    unset($connection->connection, $connection->schema, $connection->driverClasses);
-    return serialize(get_object_vars($connection));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function unserialize($serialized) {
-    $data = unserialize($serialized);
-    foreach ($data as $key => $value) {
-      $this->{$key} = $value;
-    }
-    // Re-establish the PDO connection using the original options.
-    $this->connection = static::open($this->connectionOptions);
-
-    // Re-set a Statement class if necessary.
-    if (!empty($this->statementClass)) {
-      $this->connection->setAttribute(\PDO::ATTR_STATEMENT_CLASS, array($this->statementClass, array($this)));
-    }
-  }
-
 }

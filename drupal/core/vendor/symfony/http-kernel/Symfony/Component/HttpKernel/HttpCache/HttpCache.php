@@ -34,8 +34,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     private $request;
     private $esi;
     private $esiCacheStrategy;
-    private $options = array();
-    private $traces = array();
+    private $traces;
 
     /**
      * Constructor.
@@ -81,7 +80,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     {
         $this->store = $store;
         $this->kernel = $kernel;
-        $this->esi = $esi;
 
         // needed in case there is a fatal error because the backend is too slow to respond
         register_shutdown_function(array($this->store, 'cleanup'));
@@ -95,6 +93,8 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
             'stale_while_revalidate' => 2,
             'stale_if_error'         => 60,
         ), $options);
+        $this->esi = $esi;
+        $this->traces = array();
     }
 
     /**
@@ -135,7 +135,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     /**
      * Gets the Request instance associated with the master request.
      *
-     * @return Request A Request instance
+     * @return Symfony\Component\HttpFoundation\Request A Request instance
      */
     public function getRequest()
     {
@@ -145,7 +145,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     /**
      * Gets the Kernel instance
      *
-     * @return HttpKernelInterface An HttpKernelInterface instance
+     * @return Symfony\Component\HttpKernel\HttpKernelInterface An HttpKernelInterface instance
      */
     public function getKernel()
     {
@@ -156,7 +156,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     /**
      * Gets the Esi instance
      *
-     * @return Esi An Esi instance
+     * @return Symfony\Component\HttpKernel\HttpCache\Esi An Esi instance
      */
     public function getEsi()
     {
@@ -193,6 +193,8 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
             $response = $this->lookup($request, $catch);
         }
 
+        $response->isNotModified($request);
+
         $this->restoreResponseBody($request, $response);
 
         $response->setDate(new \DateTime(null, new \DateTimeZone('UTC')));
@@ -202,16 +204,14 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
         }
 
         if (null !== $this->esi) {
+            $this->esiCacheStrategy->add($response);
+
             if (HttpKernelInterface::MASTER_REQUEST === $type) {
                 $this->esiCacheStrategy->update($response);
-            } else {
-                $this->esiCacheStrategy->add($response);
             }
         }
 
         $response->prepare($request);
-
-        $response->isNotModified($request);
 
         return $response;
     }
@@ -251,8 +251,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      *
      * @return Response A Response instance
      *
-     * @throws \Exception
-     *
      * @see RFC2616 13.10
      */
     protected function invalidate(Request $request, $catch = false)
@@ -263,15 +261,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
         if ($response->isSuccessful() || $response->isRedirect()) {
             try {
                 $this->store->invalidate($request, $catch);
-
-                // As per the RFC, invalidate Location and Content-Location URLs if present
-                foreach (array('Location', 'Content-Location') as $header) {
-                    if ($uri = $response->headers->get($header)) {
-                        $subRequest = Request::create($uri, 'get', array(), array(), array(), $request->server->all());
-
-                        $this->store->invalidate($subRequest);
-                    }
-                }
 
                 $this->record($request, 'invalidate');
             } catch (\Exception $e) {
@@ -299,8 +288,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      * @param Boolean $catch   whether to process exceptions
      *
      * @return Response A Response instance
-     *
-     * @throws \Exception
      */
     protected function lookup(Request $request, $catch = false)
     {
@@ -456,18 +443,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
             $this->esi->addSurrogateEsiCapability($request);
         }
 
-        // modify the X-Forwarded-For header if needed
-        $forwardedFor = $request->headers->get('X-Forwarded-For');
-        if ($forwardedFor) {
-            $request->headers->set('X-Forwarded-For', $forwardedFor.', '.$request->server->get('REMOTE_ADDR'));
-        } else {
-            $request->headers->set('X-Forwarded-For', $request->server->get('REMOTE_ADDR'));
-        }
-
-        // fix the client IP address by setting it to 127.0.0.1 as HttpCache
-        // is always called from the same process as the backend.
-        $request->server->set('REMOTE_ADDR', '127.0.0.1');
-
         // always a "master" request (as the real master request can be in cache)
         $response = $this->kernel->handle($request, HttpKernelInterface::MASTER_REQUEST, $catch);
         // FIXME: we probably need to also catch exceptions if raw === true
@@ -540,7 +515,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
 
             // wait for the lock to be released
             $wait = 0;
-            while ($this->store->isLocked($request) && $wait < 5000000) {
+            while (is_file($lock) && $wait < 5000000) {
                 usleep(50000);
                 $wait += 50000;
             }
@@ -574,8 +549,6 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      *
      * @param Request  $request  A Request instance
      * @param Response $response A Response instance
-     *
-     * @throws \Exception
      */
     protected function store(Request $request, Response $response)
     {
@@ -607,7 +580,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      */
     private function restoreResponseBody(Request $request, Response $response)
     {
-        if ($request->isMethod('HEAD') || 304 === $response->getStatusCode()) {
+        if ('HEAD' === $request->getMethod() || 304 === $response->getStatusCode()) {
             $response->setContent(null);
             $response->headers->remove('X-Body-Eval');
             $response->headers->remove('X-Body-File');

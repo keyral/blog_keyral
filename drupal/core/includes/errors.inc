@@ -5,10 +5,6 @@
  * Functions for error handling.
  */
 
-use Drupal\Component\Utility\Xss;
-use Drupal\Core\Page\DefaultHtmlPageRenderer;
-use Drupal\Core\Utility\Error;
-use Drupal\Component\Utility\String;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -61,14 +57,18 @@ function _drupal_error_handler_real($error_level, $message, $filename, $line, $c
     $types = drupal_error_levels();
     list($severity_msg, $severity_level) = $types[$error_level];
     $backtrace = debug_backtrace();
-    $caller = Error::getLastCaller($backtrace);
+    $caller = _drupal_get_last_caller($backtrace);
+
+    if (!function_exists('filter_xss_admin')) {
+      require_once DRUPAL_ROOT . '/core/includes/common.inc';
+    }
 
     // We treat recoverable errors as fatal.
     _drupal_log_error(array(
       '%type' => isset($types[$error_level]) ? $severity_msg : 'Unknown error',
       // The standard PHP error handler considers that the error messages
       // are HTML. We mimick this behavior here.
-      '!message' => Xss::filterAdmin($message),
+      '!message' => filter_xss_admin($message),
       '%function' => $caller['function'],
       '%file' => $caller['file'],
       '%line' => $caller['line'],
@@ -76,6 +76,67 @@ function _drupal_error_handler_real($error_level, $message, $filename, $line, $c
       'backtrace' => $backtrace,
     ), $error_level == E_RECOVERABLE_ERROR);
   }
+}
+
+/**
+ * Decodes an exception and retrieves the correct caller.
+ *
+ * @param $exception
+ *   The exception object that was thrown.
+ *
+ * @return
+ *   An error in the format expected by _drupal_log_error().
+ */
+function _drupal_decode_exception($exception) {
+  $message = $exception->getMessage();
+
+  $backtrace = $exception->getTrace();
+  // Add the line throwing the exception to the backtrace.
+  array_unshift($backtrace, array('line' => $exception->getLine(), 'file' => $exception->getFile()));
+
+  // For PDOException errors, we try to return the initial caller,
+  // skipping internal functions of the database layer.
+  if ($exception instanceof PDOException) {
+    // The first element in the stack is the call, the second element gives us the caller.
+    // We skip calls that occurred in one of the classes of the database layer
+    // or in one of its global functions.
+    $db_functions = array('db_query',  'db_query_range');
+    while (!empty($backtrace[1]) && ($caller = $backtrace[1]) &&
+        ((isset($caller['class']) && (strpos($caller['class'], 'Query') !== FALSE || strpos($caller['class'], 'Database') !== FALSE || strpos($caller['class'], 'PDO') !== FALSE)) ||
+        in_array($caller['function'], $db_functions))) {
+      // We remove that call.
+      array_shift($backtrace);
+    }
+    if (isset($exception->query_string, $exception->args)) {
+      $message .= ": " . $exception->query_string . "; " . print_r($exception->args, TRUE);
+    }
+  }
+  $caller = _drupal_get_last_caller($backtrace);
+
+  return array(
+    '%type' => get_class($exception),
+    // The standard PHP exception handler considers that the exception message
+    // is plain-text. We mimick this behavior here.
+    '!message' => check_plain($message),
+    '%function' => $caller['function'],
+    '%file' => $caller['file'],
+    '%line' => $caller['line'],
+    'severity_level' => WATCHDOG_ERROR,
+    'backtrace' => $backtrace,
+  );
+}
+
+/**
+ * Renders an exception error message without further exceptions.
+ *
+ * @param $exception
+ *   The exception object that was thrown.
+ *
+ * @return
+ *   An error message.
+ */
+function _drupal_render_exception_safe($exception) {
+  return check_plain(strtr('%type: !message in %function (line %line of %file).', _drupal_decode_exception($exception)));
 }
 
 /**
@@ -92,17 +153,14 @@ function _drupal_error_handler_real($error_level, $message, $filename, $line, $c
  *   TRUE if an error should be displayed.
  */
 function error_displayable($error = NULL) {
-  if (defined('MAINTENANCE_MODE')) {
-    return TRUE;
-  }
-  $error_level = _drupal_get_error_level();
-  if ($error_level == ERROR_REPORTING_DISPLAY_ALL || $error_level == ERROR_REPORTING_DISPLAY_VERBOSE) {
-    return TRUE;
-  }
-  if ($error_level == ERROR_REPORTING_DISPLAY_SOME && isset($error)) {
-    return $error['%type'] != 'Notice' && $error['%type'] != 'Strict warning';
-  }
-  return FALSE;
+  $error_level = config('system.logging')->get('error_level');
+  $updating = (defined('MAINTENANCE_MODE') && MAINTENANCE_MODE == 'update');
+  $all_errors_displayed = ($error_level == ERROR_REPORTING_DISPLAY_ALL) ||
+    ($error_level == ERROR_REPORTING_DISPLAY_VERBOSE);
+  $error_needs_display = ($error_level == ERROR_REPORTING_DISPLAY_SOME &&
+    isset($error) && $error['%type'] != 'Notice' && $error['%type'] != 'Strict warning');
+
+  return ($updating || $all_errors_displayed || $error_needs_display);
 }
 
 /**
@@ -117,19 +175,13 @@ function error_displayable($error = NULL) {
  *   TRUE if the error is fatal.
  */
 function _drupal_log_error($error, $fatal = FALSE) {
-  $is_installer = drupal_installation_attempted();
-  // Initialize a maintenance theme if the bootstrap was not complete.
+  // Initialize a maintenance theme if the boostrap was not complete.
   // Do it early because drupal_set_message() triggers a drupal_theme_initialize().
-  if ($fatal && drupal_get_bootstrap_phase() < DRUPAL_BOOTSTRAP_CODE) {
-    // The installer initializes a maintenance theme at the earliest possible
-    // point in time already. Do not unset that.
-    if (!$is_installer) {
-      unset($GLOBALS['theme']);
-    }
+  if ($fatal && (drupal_get_bootstrap_phase() != DRUPAL_BOOTSTRAP_FULL)) {
+    unset($GLOBALS['theme']);
     if (!defined('MAINTENANCE_MODE')) {
       define('MAINTENANCE_MODE', 'error');
     }
-    // No-op if $GLOBALS['theme'] is set already.
     drupal_maintenance_theme();
   }
 
@@ -139,7 +191,8 @@ function _drupal_log_error($error, $fatal = FALSE) {
 
   // When running inside the testing framework, we relay the errors
   // to the tested site by the way of HTTP headers.
-  if (DRUPAL_TEST_IN_CHILD_SITE && !headers_sent() && (!defined('SIMPLETEST_COLLECT_ERRORS') || SIMPLETEST_COLLECT_ERRORS)) {
+  $test_info = &$GLOBALS['drupal_test_info'];
+  if (!empty($test_info['in_child_site']) && !headers_sent() && (!defined('SIMPLETEST_COLLECT_ERRORS') || SIMPLETEST_COLLECT_ERRORS)) {
     // $number does not use drupal_static as it should not be reset
     // as it uniquely identifies each PHP error.
     static $number = 0;
@@ -156,7 +209,7 @@ function _drupal_log_error($error, $fatal = FALSE) {
     $number++;
   }
 
-  \Drupal::logger('php')->log($error['severity_level'], '%type: !message in %function (line %line of %file).', $error);
+  watchdog('php', '%type: !message in %function (line %line of %file).', $error, $error['severity_level']);
 
   if (drupal_is_cli()) {
     if ($fatal) {
@@ -167,7 +220,7 @@ function _drupal_log_error($error, $fatal = FALSE) {
     }
   }
 
-  if (\Drupal::hasRequest() && \Drupal::request()->isXmlHttpRequest()) {
+  if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest') {
     if ($fatal) {
       if (error_displayable($error)) {
         // When called from JavaScript, simply output the error message.
@@ -201,7 +254,7 @@ function _drupal_log_error($error, $fatal = FALSE) {
       $message = format_string('%type: !message in %function (line %line of %file).', $error);
 
       // Check if verbose error reporting is on.
-      $error_level = _drupal_get_error_level();
+      $error_level = config('system.logging')->get('error_level');
 
       if ($error_level == ERROR_REPORTING_DISPLAY_VERBOSE) {
         // First trace is the error itself, already contained in the message.
@@ -216,62 +269,58 @@ function _drupal_log_error($error, $fatal = FALSE) {
     }
 
     if ($fatal) {
+      // Should not translate the string to avoid errors producing more errors.
+      drupal_set_title('Error');
       // We fallback to a maintenance page at this point, because the page generation
       // itself can generate errors.
       // Should not translate the string to avoid errors producing more errors.
-      $message = 'The website has encountered an error. Please try again later.';
-      if ($is_installer) {
-        // install_display_output() prints the output and ends script execution.
-        $output = array(
-          '#title' => 'Error',
-          '#markup' => $message,
-        );
-        install_display_output($output, $GLOBALS['install_state']);
-      }
-      else {
-        $output = DefaultHtmlPageRenderer::renderPage($message, 'Error');
-      }
+      $output = theme('maintenance_page', array('content' => 'The website has encountered an error. Please try again later.'));
 
       $response = new Response($output, 500);
-      $response->setStatusCode(500, '500 Service unavailable (with message)');
-      // An exception must halt script execution.
-      $response->send();
-      exit;
+      if ($fatal) {
+        $response->setStatusCode(500, '500 Service unavailable (with message)');
+      }
+
+      return $response;
     }
   }
 }
 
 /**
- * Returns the current error level.
+ * Gets the last caller from a backtrace.
  *
- * This function should only be used to get the current error level prior to
- * DRUPAL_BOOTSTRAP_KERNEL or before Drupal is installed. In all other situations
- * the following code is preferred:
- * @code
- * \Drupal::config('system.logging')->get('error_level');
- * @endcode
+ * @param $backtrace
+ *   A standard PHP backtrace. Passed by reference.
  *
- * @return string
- *   The current error level.
+ * @return
+ *   An associative array with keys 'file', 'line' and 'function'.
  */
-function _drupal_get_error_level() {
-  // Raise the error level to maximum for the installer, so users are able to
-  // file proper bug reports for installer errors. The returned value is
-  // different to the one below, because the installer actually has a
-  // 'config.factory' service, which reads the default 'error_level' value from
-  // System module's default configuration and the default value is not verbose.
-  // @see error_displayable()
-  if (drupal_installation_attempted()) {
-    return ERROR_REPORTING_DISPLAY_VERBOSE;
+function _drupal_get_last_caller(&$backtrace) {
+  // Errors that occur inside PHP internal functions do not generate
+  // information about file and line. Ignore black listed functions.
+  $blacklist = array('debug', '_drupal_error_handler', '_drupal_exception_handler');
+  while (($backtrace && !isset($backtrace[0]['line'])) ||
+         (isset($backtrace[1]['function']) && in_array($backtrace[1]['function'], $blacklist))) {
+    array_shift($backtrace);
   }
-  $error_level = NULL;
-  if (\Drupal::hasService('config.factory')) {
-    $error_level = \Drupal::config('system.logging')->get('error_level');
+
+  // The first trace is the call itself.
+  // It gives us the line and the file of the last call.
+  $call = $backtrace[0];
+
+  // The second call give us the function where the call originated.
+  if (isset($backtrace[1])) {
+    if (isset($backtrace[1]['class'])) {
+      $call['function'] = $backtrace[1]['class'] . $backtrace[1]['type'] . $backtrace[1]['function'] . '()';
+    }
+    else {
+      $call['function'] = $backtrace[1]['function'] . '()';
+    }
   }
-  // If there is no container or if it has no config.factory service, we are
-  // possibly in an edge-case error situation while trying to serve a regular
-  // request on a public site, so use the non-verbose default value.
-  return $error_level ?: ERROR_REPORTING_DISPLAY_ALL;
+  else {
+    $call['function'] = 'main()';
+  }
+  return $call;
 }
 
 /**
@@ -284,10 +333,29 @@ function _drupal_get_error_level() {
  *
  * @return string
  *   A plain-text line-wrapped string ready to be put inside <pre>.
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
- *   Use \Drupal\Core\Utility\Error::formatBacktrace().
  */
 function format_backtrace(array $backtrace) {
-  return Error::formatBacktrace($backtrace);
+  $return = '';
+  foreach ($backtrace as $trace) {
+    $call = array('function' => '', 'args' => array());
+    if (isset($trace['class'])) {
+      $call['function'] = $trace['class'] . $trace['type'] . $trace['function'];
+    }
+    elseif (isset($trace['function'])) {
+      $call['function'] = $trace['function'];
+    }
+    else {
+      $call['function'] = 'main';
+    }
+    foreach ($trace['args'] as $arg) {
+      if (is_scalar($arg)) {
+        $call['args'][] = is_string($arg) ? '\'' . filter_xss($arg) . '\'' : $arg;
+      }
+      else {
+        $call['args'][] = ucfirst(gettype($arg));
+      }
+    }
+    $return .= $call['function'] . '(' . implode(', ', $call['args']) . ")\n";
+  }
+  return $return;
 }

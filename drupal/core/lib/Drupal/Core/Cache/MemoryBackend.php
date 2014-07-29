@@ -15,7 +15,6 @@ namespace Drupal\Core\Cache;
  * Should be used for unit tests and specialist use-cases only, does not
  * store cached items between requests.
  *
- * @ingroup cache
  */
 class MemoryBackend implements CacheBackendInterface {
 
@@ -71,11 +70,8 @@ class MemoryBackend implements CacheBackendInterface {
    * Checks that items are either permanent or did not expire, and returns data
    * as appropriate.
    *
-   * @param object $cache
+   * @param stdClass $cache
    *   An item loaded from cache_get() or cache_get_multiple().
-   * @param bool $allow_invalid
-   *   (optional) If TRUE, cache items may be returned even if they have expired
-   *   or been invalidated.
    *
    * @return mixed
    *   The item with data as appropriate or FALSE if there is no
@@ -85,44 +81,28 @@ class MemoryBackend implements CacheBackendInterface {
     if (!isset($cache->data)) {
       return FALSE;
     }
-    // The object passed into this function is the one stored in $this->cache.
-    // We must clone it as part of the preparation step so that the actual
-    // cache object is not affected by the unserialize() call or other
-    // manipulations of the returned object.
-
-    $prepared = clone $cache;
-    $prepared->data = unserialize($prepared->data);
 
     // Check expire time.
-    $prepared->valid = $prepared->expire == Cache::PERMANENT || $prepared->expire >= REQUEST_TIME;
+    $cache->valid = $cache->expire == CacheBackendInterface::CACHE_PERMANENT || $cache->expire >= REQUEST_TIME;
 
-    if (!$allow_invalid && !$prepared->valid) {
+    if (!$allow_invalid && !$cache->valid) {
       return FALSE;
     }
 
-    return $prepared;
+    return $cache;
   }
 
   /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::set().
    */
-  public function set($cid, $data, $expire = Cache::PERMANENT, array $tags = array()) {
+  public function set($cid, $data, $expire = CacheBackendInterface::CACHE_PERMANENT, array $tags = array()) {
     $this->cache[$cid] = (object) array(
       'cid' => $cid,
-      'data' => serialize($data),
+      'data' => $data,
       'created' => REQUEST_TIME,
       'expire' => $expire,
       'tags' => $this->flattenTags($tags),
     );
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setMultiple(array $items = array()) {
-    foreach ($items as $cid => $item) {
-      $this->set($cid, $item['data'], isset($item['expire']) ? $item['expire'] : CacheBackendInterface::CACHE_PERMANENT, isset($item['tags']) ? $item['tags'] : array());
-    }
   }
 
   /**
@@ -159,12 +139,20 @@ class MemoryBackend implements CacheBackendInterface {
   }
 
   /**
+   * Implements Drupal\Core\Cache\CacheBackendInterface::deleteExpired().
+   *
+   * Cache expiration is not implemented for MemoryBackend as this backend only
+   * persists during a single request and expiration are done using
+   * REQUEST_TIME.
+   */
+  public function deleteExpired() {
+  }
+
+  /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::invalidate().
    */
   public function invalidate($cid) {
-    if (isset($this->cache[$cid])) {
-      $this->cache[$cid]->expire = REQUEST_TIME - 1;
-    }
+    $this->cache[$cid]->expire = REQUEST_TIME - 1;
   }
 
   /**
@@ -215,14 +203,21 @@ class MemoryBackend implements CacheBackendInterface {
     foreach ($tags as $namespace => $values) {
       if (is_array($values)) {
         foreach ($values as $value) {
-          $flat_tags[] = "$namespace:$value";
+          $flat_tags["$namespace:$value"] = "$namespace:$value";
         }
       }
       else {
-        $flat_tags[] = "$namespace:$values";
+        $flat_tags["$namespace:$values"] = "$namespace:$values";
       }
     }
     return $flat_tags;
+  }
+
+  /**
+   * Implements Drupal\Core\Cache\CacheBackendInterface::isEmpty().
+   */
+  public function isEmpty() {
+    return empty($this->cache);
   }
 
   /**
@@ -230,10 +225,4 @@ class MemoryBackend implements CacheBackendInterface {
    */
   public function garbageCollection() {
   }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function removeBin() {}
-
 }

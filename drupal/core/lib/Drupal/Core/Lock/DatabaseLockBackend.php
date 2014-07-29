@@ -7,35 +7,12 @@
 
 namespace Drupal\Core\Lock;
 
-use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 
 /**
  * Defines the database lock backend. This is the default backend in Drupal.
- *
- * @ingroup lock
  */
 class DatabaseLockBackend extends LockBackendAbstract {
-
-  /**
-   * The database connection.
-   *
-   * @var \Drupal\Core\Database\Connection
-   */
-  protected $database;
-
-  /**
-   * Constructs a new DatabaseLockBackend.
-   *
-   * @param \Drupal\Core\Database\Connection $database
-   *   The database connection.
-   */
-  public function __construct(Connection $database) {
-    // __destruct() is causing problems with garbage collections, register a
-    // shutdown function instead.
-    drupal_register_shutdown_function(array($this, 'releaseAll'));
-    $this->database = $database;
-  }
 
   /**
    * Implements Drupal\Core\Lock\LockBackedInterface::acquire().
@@ -46,7 +23,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
     $expire = microtime(TRUE) + $timeout;
     if (isset($this->locks[$name])) {
       // Try to extend the expiration of a lock we already acquired.
-      $success = (bool) $this->database->update('semaphore')
+      $success = (bool) db_update('semaphore')
         ->fields(array('expire' => $expire))
         ->condition('name', $name)
         ->condition('value', $this->getLockId())
@@ -64,7 +41,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
       // We always want to do this code at least once.
       do {
         try {
-          $this->database->insert('semaphore')
+          db_insert('semaphore')
             ->fields(array(
               'name' => $name,
               'value' => $this->getLockId(),
@@ -95,7 +72,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
    * Implements Drupal\Core\Lock\LockBackedInterface::lockMayBeAvailable().
    */
   public function lockMayBeAvailable($name) {
-    $lock = $this->database->query('SELECT expire, value FROM {semaphore} WHERE name = :name', array(':name' => $name))->fetchAssoc();
+    $lock = db_query('SELECT expire, value FROM {semaphore} WHERE name = :name', array(':name' => $name))->fetchAssoc();
     if (!$lock) {
       return TRUE;
     }
@@ -105,7 +82,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
       // We check two conditions to prevent a race condition where another
       // request acquired the lock and set a new expire time. We add a small
       // number to $expire to avoid errors with float to string conversion.
-      return (bool) $this->database->delete('semaphore')
+      return (bool) db_delete('semaphore')
         ->condition('name', $name)
         ->condition('value', $lock['value'])
         ->condition('expire', 0.0001 + $expire, '<=')
@@ -119,7 +96,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
    */
   public function release($name) {
     unset($this->locks[$name]);
-    $this->database->delete('semaphore')
+    db_delete('semaphore')
       ->condition('name', $name)
       ->condition('value', $this->getLockId())
       ->execute();
@@ -129,15 +106,12 @@ class DatabaseLockBackend extends LockBackendAbstract {
    * Implements Drupal\Core\Lock\LockBackedInterface::releaseAll().
    */
   public function releaseAll($lock_id = NULL) {
-    // Only attempt to release locks if any were acquired.
-    if (!empty($this->locks)) {
-      $this->locks = array();
-      if (empty($lock_id)) {
-        $lock_id = $this->getLockId();
-      }
-      $this->database->delete('semaphore')
-        ->condition('value', $lock_id)
-        ->execute();
+    $this->locks = array();
+    if (empty($lock_id)) {
+      $lock_id = $this->getLockId();
     }
+    db_delete('semaphore')
+      ->condition('value', $lock_id)
+      ->execute();
   }
 }

@@ -12,17 +12,15 @@
 /**
  * Represents a template test as a Node.
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package    twig
+ * @author     Fabien Potencier <fabien@symfony.com>
  */
-class Twig_Test_Node extends Twig_Test
+class Twig_Test_Node implements Twig_TestInterface
 {
     protected $class;
 
-    public function __construct($class, array $options = array())
+    public function __construct($class)
     {
-        parent::__construct($options);
-
         $this->class = $class;
     }
 

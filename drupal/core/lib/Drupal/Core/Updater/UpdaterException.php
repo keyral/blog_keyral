@@ -7,6 +7,8 @@
 
 namespace Drupal\Core\Updater;
 
+use Exception;
+
 /**
  * Defines a Exception class for the Drupal\Core\Updater\Updater class
  * hierarchy.
@@ -15,4 +17,5 @@ namespace Drupal\Core\Updater;
  * specific name so that call sites that want to tell the difference can
  * specifically catch these exceptions and treat them differently.
  */
-class UpdaterException extends \Exception {}
+class UpdaterException extends Exception {
+}

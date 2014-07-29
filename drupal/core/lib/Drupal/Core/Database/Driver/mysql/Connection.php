@@ -15,6 +15,8 @@ use Drupal\Core\Database\TransactionCommitFailedException;
 use Drupal\Core\Database\DatabaseException;
 use Drupal\Core\Database\Connection as DatabaseConnection;
 
+use PDO;
+
 /**
  * @addtogroup database
  * @{
@@ -34,12 +36,7 @@ class Connection extends DatabaseConnection {
    */
   protected $needsCleanup = FALSE;
 
-  /**
-   * Constructs a Connection object.
-   */
-  public function __construct(\PDO $connection, array $connection_options = array()) {
-    parent::__construct($connection, $connection_options);
-
+  public function __construct(array $connection_options = array()) {
     // This driver defaults to transaction support, except if explicitly passed FALSE.
     $this->transactionSupport = !isset($connection_options['transactions']) || ($connection_options['transactions'] !== FALSE);
 
@@ -47,12 +44,7 @@ class Connection extends DatabaseConnection {
     $this->transactionalDDLSupport = FALSE;
 
     $this->connectionOptions = $connection_options;
-  }
 
-  /**
-   * {@inheritdoc}
-   */
-  public static function open(array &$connection_options = array()) {
     // The DSN should use either a socket or a host/port.
     if (isset($connection_options['unix_socket'])) {
       $dsn = 'mysql:unix_socket=' . $connection_options['unix_socket'];
@@ -69,27 +61,22 @@ class Connection extends DatabaseConnection {
       'pdo' => array(),
     );
     $connection_options['pdo'] += array(
-      \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
       // So we don't have to mess around with cursors and unbuffered queries by default.
-      \PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => TRUE,
-      // Make sure MySQL returns all matched rows on update queries including
-      // rows that actually didn't have to be updated because the values didn't
-      // change. This matches common behavior among other database systems.
-      \PDO::MYSQL_ATTR_FOUND_ROWS => TRUE,
+      PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => TRUE,
       // Because MySQL's prepared statements skip the query cache, because it's dumb.
-      \PDO::ATTR_EMULATE_PREPARES => TRUE,
+      PDO::ATTR_EMULATE_PREPARES => TRUE,
     );
 
-    $pdo = new \PDO($dsn, $connection_options['username'], $connection_options['password'], $connection_options['pdo']);
+    parent::__construct($dsn, $connection_options['username'], $connection_options['password'], $connection_options['pdo']);
 
     // Force MySQL to use the UTF-8 character set. Also set the collation, if a
     // certain one has been set; otherwise, MySQL defaults to 'utf8_general_ci'
     // for UTF-8.
     if (!empty($connection_options['collation'])) {
-      $pdo->exec('SET NAMES utf8 COLLATE ' . $connection_options['collation']);
+      $this->exec('SET NAMES utf8 COLLATE ' . $connection_options['collation']);
     }
     else {
-      $pdo->exec('SET NAMES utf8');
+      $this->exec('SET NAMES utf8');
     }
 
     // Set MySQL init_commands if not already defined.  Default Drupal's MySQL
@@ -107,27 +94,9 @@ class Connection extends DatabaseConnection {
       'sql_mode' => "SET sql_mode = 'ANSI,STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER'",
     );
     // Set connection options.
-    $pdo->exec(implode('; ', $connection_options['init_commands']));
-
-    return $pdo;
+    $this->exec(implode('; ', $connection_options['init_commands']));
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function serialize() {
-    // Cleanup the connection, much like __destruct() does it as well.
-    if ($this->needsCleanup) {
-      $this->nextIdDelete();
-    }
-    $this->needsCleanup = FALSE;
-
-    return parent::serialize();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function __destruct() {
     if ($this->needsCleanup) {
       $this->nextIdDelete();
@@ -140,7 +109,7 @@ class Connection extends DatabaseConnection {
 
   public function queryTemporary($query, array $args = array(), array $options = array()) {
     $tablename = $this->generateTemporaryTableName();
-    $this->query('CREATE TEMPORARY TABLE {' . $tablename . '} Engine=MEMORY ' . $query, $args, $options);
+    $this->query(preg_replace('/^SELECT/i', 'CREATE TEMPORARY TABLE {' . $tablename . '} Engine=MEMORY SELECT', $query), $args, $options);
     return $tablename;
   }
 
@@ -158,7 +127,7 @@ class Connection extends DatabaseConnection {
    * @param string $database
    *   The name of the database to create.
    *
-   * @throws \Drupal\Core\Database\DatabaseNotFoundException
+   * @throws DatabaseNotFoundException
    */
   public function createDatabase($database) {
     // Escape the database name.
@@ -166,8 +135,8 @@ class Connection extends DatabaseConnection {
 
     try {
       // Create the database and set it as active.
-      $this->connection->exec("CREATE DATABASE $database");
-      $this->connection->exec("USE $database");
+      $this->exec("CREATE DATABASE $database");
+      $this->exec("USE $database");
     }
     catch (\Exception $e) {
       throw new DatabaseNotFoundException($e->getMessage());
@@ -235,7 +204,7 @@ class Connection extends DatabaseConnection {
       // If there are no more layers left then we should commit.
       unset($this->transactionLayers[$name]);
       if (empty($this->transactionLayers)) {
-        if (!$this->connection->commit()) {
+        if (!PDO::commit()) {
           throw new TransactionCommitFailedException();
         }
       }
@@ -258,7 +227,7 @@ class Connection extends DatabaseConnection {
             $this->transactionLayers = array();
             // We also have to explain to PDO that the transaction stack has
             // been cleaned-up.
-            $this->connection->commit();
+            PDO::commit();
           }
           else {
             throw $e;

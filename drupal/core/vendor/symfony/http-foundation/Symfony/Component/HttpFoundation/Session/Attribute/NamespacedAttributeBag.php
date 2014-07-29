@@ -46,10 +46,6 @@ class NamespacedAttributeBag extends AttributeBag
         $attributes = $this->resolveAttributePath($name);
         $name = $this->resolveKey($name);
 
-        if (null === $attributes) {
-            return false;
-        }
-
         return array_key_exists($name, $attributes);
     }
 
@@ -60,10 +56,6 @@ class NamespacedAttributeBag extends AttributeBag
     {
         $attributes = $this->resolveAttributePath($name);
         $name = $this->resolveKey($name);
-
-        if (null === $attributes) {
-            return $default;
-        }
 
         return array_key_exists($name, $attributes) ? $attributes[$name] : $default;
     }
@@ -86,7 +78,7 @@ class NamespacedAttributeBag extends AttributeBag
         $retval = null;
         $attributes = & $this->resolveAttributePath($name);
         $name = $this->resolveKey($name);
-        if (null !== $attributes && array_key_exists($name, $attributes)) {
+        if (array_key_exists($name, $attributes)) {
             $retval = $attributes[$name];
             unset($attributes[$name]);
         }
@@ -128,8 +120,12 @@ class NamespacedAttributeBag extends AttributeBag
         unset($parts[count($parts)-1]);
 
         foreach ($parts as $part) {
-            if (null !== $array && !array_key_exists($part, $array)) {
-                $array[$part] = $writeContext ? array() : null;
+            if (!array_key_exists($part, $array)) {
+                if (!$writeContext) {
+                    return $array;
+                }
+
+                $array[$part] = array();
             }
 
             $array = & $array[$part];
@@ -149,8 +145,8 @@ class NamespacedAttributeBag extends AttributeBag
      */
     protected function resolveKey($name)
     {
-        if (false !== $pos = strrpos($name, $this->namespaceCharacter)) {
-            $name = substr($name, $pos+1);
+        if (strpos($name, $this->namespaceCharacter) !== false) {
+            $name = substr($name, strrpos($name, $this->namespaceCharacter)+1, strlen($name));
         }
 
         return $name;

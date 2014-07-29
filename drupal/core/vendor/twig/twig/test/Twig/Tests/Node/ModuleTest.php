@@ -9,15 +9,17 @@
  * file that was distributed with this source code.
  */
 
-class Twig_Tests_Node_ModuleTest extends Twig_Test_NodeTestCase
+require_once dirname(__FILE__).'/TestCase.php';
+
+class Twig_Tests_Node_ModuleTest extends Twig_Tests_Node_TestCase
 {
     /**
      * @covers Twig_Node_Module::__construct
      */
     public function testConstructor()
     {
-        $body = new Twig_Node_Text('foo', 1);
-        $parent = new Twig_Node_Expression_Constant('layout.twig', 1);
+        $body = new Twig_Node_Text('foo', 0);
+        $parent = new Twig_Node_Expression_Constant('layout.twig', 0);
         $blocks = new Twig_Node();
         $macros = new Twig_Node();
         $traits = new Twig_Node();
@@ -53,7 +55,7 @@ class Twig_Tests_Node_ModuleTest extends Twig_Test_NodeTestCase
 
         $tests = array();
 
-        $body = new Twig_Node_Text('foo', 1);
+        $body = new Twig_Node_Text('foo', 0);
         $extends = null;
         $blocks = new Twig_Node();
         $macros = new Twig_Node();
@@ -65,7 +67,7 @@ class Twig_Tests_Node_ModuleTest extends Twig_Test_NodeTestCase
 <?php
 
 /* foo.twig */
-class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c18638df0d extends Twig_Template
+class __TwigTemplate_be925a7b06dda0dfdbd18a1509f7eb34 extends Twig_Template
 {
     public function __construct(Twig_Environment \$env)
     {
@@ -79,7 +81,6 @@ class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c1863
 
     protected function doDisplay(array \$context, array \$blocks = array())
     {
-        // line 1
         echo "foo";
     }
 
@@ -90,23 +91,23 @@ class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c1863
 
     public function getDebugInfo()
     {
-        return array (  19 => 1,);
+        return array ();
     }
 }
 EOF
         , $twig);
 
-        $import = new Twig_Node_Import(new Twig_Node_Expression_Constant('foo.twig', 1), new Twig_Node_Expression_AssignName('macro', 1), 1);
+        $import = new Twig_Node_Import(new Twig_Node_Expression_Constant('foo.twig', 0), new Twig_Node_Expression_AssignName('macro', 0), 0);
 
         $body = new Twig_Node(array($import));
-        $extends = new Twig_Node_Expression_Constant('layout.twig', 1);
+        $extends = new Twig_Node_Expression_Constant('layout.twig', 0);
 
         $node = new Twig_Node_Module($body, $extends, $blocks, $macros, $traits, new Twig_Node(array()), $filename);
         $tests[] = array($node, <<<EOF
 <?php
 
 /* foo.twig */
-class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c18638df0d extends Twig_Template
+class __TwigTemplate_be925a7b06dda0dfdbd18a1509f7eb34 extends Twig_Template
 {
     public function __construct(Twig_Environment \$env)
     {
@@ -125,7 +126,6 @@ class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c1863
 
     protected function doDisplay(array \$context, array \$blocks = array())
     {
-        // line 1
         \$context["macro"] = \$this->env->loadTemplate("foo.twig");
         \$this->parent->display(\$context, array_merge(\$this->blocks, \$blocks));
     }
@@ -142,7 +142,7 @@ class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c1863
 
     public function getDebugInfo()
     {
-        return array (  24 => 1,);
+        return array ();
     }
 }
 EOF
@@ -150,9 +150,9 @@ EOF
 
         $body = new Twig_Node();
         $extends = new Twig_Node_Expression_Conditional(
-                        new Twig_Node_Expression_Constant(true, 1),
-                        new Twig_Node_Expression_Constant('foo', 1),
-                        new Twig_Node_Expression_Constant('foo', 1),
+                        new Twig_Node_Expression_Constant(true, 0),
+                        new Twig_Node_Expression_Constant('foo', 0),
+                        new Twig_Node_Expression_Constant('foo', 0),
                         0
                     );
 
@@ -161,7 +161,7 @@ EOF
 <?php
 
 /* foo.twig */
-class __TwigTemplate_a2bfbf7dd6ab85666684fe9297f69363a3fc2046d90f22a317d380c18638df0d extends Twig_Template
+class __TwigTemplate_be925a7b06dda0dfdbd18a1509f7eb34 extends Twig_Template
 {
     protected function doGetParent(array \$context)
     {

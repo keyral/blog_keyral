@@ -5,7 +5,21 @@
  * Code required only when rendering the available updates report.
  */
 
-use Drupal\Component\Utility\String;
+/**
+ * Page callback: Generates a page about the update status of projects.
+ *
+ * @see update_menu()
+ */
+function update_status() {
+  if ($available = update_get_available(TRUE)) {
+    module_load_include('inc', 'update', 'update.compare');
+    $data = update_calculate_project_data($available);
+    return theme('update_report', array('data' => $data));
+  }
+  else {
+    return theme('update_report', array('data' => _update_no_data()));
+  }
+}
 
 /**
  * Returns HTML for the project status report.
@@ -19,12 +33,8 @@ use Drupal\Component\Utility\String;
 function theme_update_report($variables) {
   $data = $variables['data'];
 
-  $last = \Drupal::state()->get('update.last_check') ?: 0;
-  $update_last_check = array(
-    '#theme' => 'update_last_check',
-    '#last' => $last,
-  );
-  $output = drupal_render($update_last_check);
+  $last = state()->get('update.last_check') ?: 0;
+  $output = theme('update_last_check', array('last' => $last));
 
   if (!is_array($data)) {
     $output .= '<p>' . $data . '</p>';
@@ -33,6 +43,8 @@ function theme_update_report($variables) {
 
   $header = array();
   $rows = array();
+
+  $notification_level = config('update.settings')->get('notification.threshold');
 
   // Create an array of status values keyed by module or theme name, since
   // we'll need this while generating the report if we have to cross reference
@@ -47,46 +59,32 @@ function theme_update_report($variables) {
     switch ($project['status']) {
       case UPDATE_CURRENT:
         $class = 'ok';
-        $uri = 'core/misc/icons/73b355/check.png';
-        $text = t('ok');
+        $icon = theme('image', array('uri' => 'core/misc/watchdog-ok.png', 'width' => 18, 'height' => 18, 'alt' => t('ok'), 'title' => t('ok')));
         break;
       case UPDATE_UNKNOWN:
       case UPDATE_FETCH_PENDING:
       case UPDATE_NOT_FETCHED:
         $class = 'unknown';
-        $uri = 'core/misc/icons/e29700/warning.png';
-        $text = t('warning');
+        $icon = theme('image', array('uri' => 'core/misc/watchdog-warning.png', 'width' => 18, 'height' => 18, 'alt' => t('warning'), 'title' => t('warning')));
         break;
       case UPDATE_NOT_SECURE:
       case UPDATE_REVOKED:
       case UPDATE_NOT_SUPPORTED:
         $class = 'error';
-        $uri = 'core/misc/icons/ea2800/error.png';
-        $text = t('error');
+        $icon = theme('image', array('uri' => 'core/misc/watchdog-error.png', 'width' => 18, 'height' => 18, 'alt' => t('error'), 'title' => t('error')));
         break;
       case UPDATE_NOT_CHECKED:
       case UPDATE_NOT_CURRENT:
       default:
         $class = 'warning';
-        $uri = 'core/misc/icons/e29700/warning.png';
-        $text = t('warning');
+        $icon = theme('image', array('uri' => 'core/misc/watchdog-warning.png', 'width' => 18, 'height' => 18, 'alt' => t('warning'), 'title' => t('warning')));
         break;
     }
 
-    $icon = array(
-      '#theme' => 'image',
-      '#width' => 18,
-      '#height' => 18,
-      '#uri' => $uri,
-      '#alt' => $text,
-      '#title' => $text,
-    );
-
     $row = '<div class="version-status">';
-    $update_status_label = array('#theme' => 'update_status_label', '#status' => $project['status']);
-    $status_label = drupal_render($update_status_label);
-    $row .= !empty($status_label) ? $status_label : String::checkPlain($project['reason']);
-    $row .= '<span class="icon">' . drupal_render($icon) . '</span>';
+    $status_label = theme('update_status_label', array('status' => $project['status']));
+    $row .= !empty($status_label) ? $status_label : check_plain($project['reason']);
+    $row .= '<span class="icon">' . $icon . '</span>';
     $row .= "</div>\n";
 
     $row .= '<div class="project">';
@@ -95,13 +93,13 @@ function theme_update_report($variables) {
         $row .= l($project['title'], $project['link']);
       }
       else {
-        $row .= String::checkPlain($project['title']);
+        $row .= check_plain($project['title']);
       }
     }
     else {
-      $row .= String::checkPlain($project['name']);
+      $row .= check_plain($project['name']);
     }
-    $row .= ' ' . String::checkPlain($project['existing_version']);
+    $row .= ' ' . check_plain($project['existing_version']);
     if ($project['install_type'] == 'dev' && !empty($project['datestamp'])) {
       $row .= ' <span class="version-date">(' . format_date($project['datestamp'], 'custom', 'Y-M-d') . ')</span>';
     }
@@ -136,62 +134,32 @@ function theme_update_report($variables) {
               ) {
             $version_class[] = 'version-recommended-strong';
           }
-          $update_version = array(
-            '#theme' => 'update_version',
-            '#version' => $project['releases'][$project['recommended']],
-            '#tag' => t('Recommended version:'),
-            '#class' => $version_class,
-          );
-          $versions_inner .= drupal_render($update_version);
+          $versions_inner .= theme('update_version', array('version' => $project['releases'][$project['recommended']], 'tag' => t('Recommended version:'), 'class' => $version_class));
         }
 
         // Now, print any security updates.
         if (!empty($project['security updates'])) {
           $security_class[] = 'version-security';
           foreach ($project['security updates'] as $security_update) {
-            $update_version = array(
-              '#theme' => 'update_version',
-              '#version' => $security_update,
-              '#tag' => t('Security update:'),
-              '#class' => $security_class,
-            );
-            $versions_inner .= drupal_render($update_version);
+            $versions_inner .= theme('update_version', array('version' => $security_update, 'tag' => t('Security update:'), 'class' => $security_class));
           }
         }
       }
 
       if ($project['recommended'] !== $project['latest_version']) {
-        $update_version = array(
-          '#theme' => 'update_version',
-          '#version' => $project['releases'][$project['latest_version']],
-          '#tag' => t('Latest version:'),
-          '#class' => array('version-latest'),
-        );
-        $versions_inner .= drupal_render($update_version);
+        $versions_inner .= theme('update_version', array('version' => $project['releases'][$project['latest_version']], 'tag' => t('Latest version:'), 'class' => array('version-latest')));
       }
       if ($project['install_type'] == 'dev'
           && $project['status'] != UPDATE_CURRENT
           && isset($project['dev_version'])
           && $project['recommended'] !== $project['dev_version']) {
-        $update_version = array(
-          '#theme' => 'update_version',
-          '#version' => $project['releases'][$project['dev_version']],
-          '#tag' => t('Development version:'),
-          '#class' => array('version-latest'),
-        );
-        $versions_inner .= drupal_render($update_version);
+        $versions_inner .= theme('update_version', array('version' => $project['releases'][$project['dev_version']], 'tag' => t('Development version:'), 'class' => array('version-latest')));
       }
     }
 
     if (isset($project['also'])) {
       foreach ($project['also'] as $also) {
-        $update_version = array(
-          '#theme' => 'update_version',
-          '#version' => $project['releases'][$also],
-          '#tag' => t('Also available:'),
-          '#class' => array('version-also-available'),
-        );
-        $versions_inner .= drupal_render($update_version);
+        $versions_inner .= theme('update_version', array('version' => $project['releases'][$also], 'tag' => t('Also available:'), 'class' => array('version-also-available')));
       }
     }
 
@@ -201,9 +169,9 @@ function theme_update_report($variables) {
     $row .= "<div class=\"info\">\n";
     if (!empty($project['extra'])) {
       $row .= '<div class="extra">' . "\n";
-      foreach ($project['extra'] as $value) {
+      foreach ($project['extra'] as $key => $value) {
         $row .= '<div class="' . implode(' ', $value['class']) . '">';
-        $row .= String::checkPlain($value['label']) . ': ';
+        $row .= check_plain($value['label']) . ': ';
         $row .= drupal_placeholder($value['data']);
         $row .= "</div>\n";
       }
@@ -219,11 +187,7 @@ function theme_update_report($variables) {
       $row .= t('Includes:');
       $includes_items[] = t('Enabled: %includes', array('%includes' => implode(', ', $project['includes'])));
       $includes_items[] = t('Disabled: %disabled', array('%disabled' => implode(', ', $project['disabled'])));
-      $item_list = array(
-        '#theme' => 'item_list',
-        '#items' => $includes_items,
-      );
-      $row .= drupal_render($item_list);
+      $row .= theme('item_list', array('items' => $includes_items));
     }
     else {
       $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['includes'])));
@@ -235,15 +199,11 @@ function theme_update_report($variables) {
       asort($project['base_themes']);
       $base_themes = array();
       foreach ($project['base_themes'] as $base_key => $base_theme) {
-        $update_status_label = array(
-          '#theme' => 'update_status_label',
-          '#status' => $status[$base_key],
-        );
         switch ($status[$base_key]) {
           case UPDATE_NOT_SECURE:
           case UPDATE_REVOKED:
           case UPDATE_NOT_SUPPORTED:
-            $base_themes[] = t('%base_theme (!base_label)', array('%base_theme' => $base_theme, '!base_label' => drupal_render($update_status_label)));
+            $base_themes[] = t('%base_theme (!base_label)', array('%base_theme' => $base_theme, '!base_label' => theme('update_status_label', array('status' => $status[$base_key]))));
             break;
 
           default:
@@ -284,27 +244,10 @@ function theme_update_report($variables) {
     if (!empty($rows[$type_name])) {
       ksort($rows[$type_name]);
       $output .= "\n<h3>" . $type_label . "</h3>\n";
-      $table = array(
-        '#type' => 'table',
-        '#header' => $header,
-        '#rows' => $rows[$type_name],
-        '#attributes' => array(
-          'class' => array('update'),
-        ),
-      );
-      $output .= drupal_render($table);
+      $output .= theme('table', array('header' => $header, 'rows' => $rows[$type_name], 'attributes' => array('class' => array('update'))));
     }
   }
-
-  $assets = array(
-    '#attached' => array(
-      'library' => array(
-        'update/drupal.update.admin',
-      ),
-    )
-  );
-  drupal_render($assets);
-
+  drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
   return $output;
 }
 
@@ -376,11 +319,7 @@ function theme_update_version($variables) {
     'title' => t('Release notes'),
     'href' => $version['release_link'],
   );
-  $links__update_version = array(
-    '#theme' => 'links__update_version',
-    '#links' => $links,
-  );
-  $output .= drupal_render($links__update_version);
+  $output .= theme('links__update_version', array('links' => $links));
   $output .= '</td>';
   $output .= '</tr>';
   $output .= "</table>\n";

@@ -12,20 +12,16 @@
 /**
  * Represents a method template test.
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package    twig
+ * @author     Fabien Potencier <fabien@symfony.com>
  */
-class Twig_Test_Method extends Twig_Test
+class Twig_Test_Method implements Twig_TestInterface
 {
     protected $extension;
     protected $method;
 
-    public function __construct(Twig_ExtensionInterface $extension, $method, array $options = array())
+    public function __construct(Twig_ExtensionInterface $extension, $method)
     {
-        $options['callable'] = array($extension, $method);
-
-        parent::__construct($options);
-
         $this->extension = $extension;
         $this->method = $method;
     }

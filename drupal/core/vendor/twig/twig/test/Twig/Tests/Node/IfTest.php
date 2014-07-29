@@ -9,7 +9,9 @@
  * file that was distributed with this source code.
  */
 
-class Twig_Tests_Node_IfTest extends Twig_Test_NodeTestCase
+require_once dirname(__FILE__).'/TestCase.php';
+
+class Twig_Tests_Node_IfTest extends Twig_Tests_Node_TestCase
 {
     /**
      * @covers Twig_Node_If::__construct
@@ -17,17 +19,17 @@ class Twig_Tests_Node_IfTest extends Twig_Test_NodeTestCase
     public function testConstructor()
     {
         $t = new Twig_Node(array(
-            new Twig_Node_Expression_Constant(true, 1),
-            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 1), 1),
-        ), array(), 1);
+            new Twig_Node_Expression_Constant(true, 0),
+            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 0), 0),
+        ), array(), 0);
         $else = null;
-        $node = new Twig_Node_If($t, $else, 1);
+        $node = new Twig_Node_If($t, $else, 0);
 
         $this->assertEquals($t, $node->getNode('tests'));
         $this->assertEquals(null, $node->getNode('else'));
 
-        $else = new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 1), 1);
-        $node = new Twig_Node_If($t, $else, 1);
+        $else = new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 0), 0);
+        $node = new Twig_Node_If($t, $else, 0);
         $this->assertEquals($else, $node->getNode('else'));
     }
 
@@ -45,14 +47,13 @@ class Twig_Tests_Node_IfTest extends Twig_Test_NodeTestCase
         $tests = array();
 
         $t = new Twig_Node(array(
-            new Twig_Node_Expression_Constant(true, 1),
-            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 1), 1),
-        ), array(), 1);
+            new Twig_Node_Expression_Constant(true, 0),
+            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 0), 0),
+        ), array(), 0);
         $else = null;
-        $node = new Twig_Node_If($t, $else, 1);
+        $node = new Twig_Node_If($t, $else, 0);
 
         $tests[] = array($node, <<<EOF
-// line 1
 if (true) {
     echo {$this->getVariableGetter('foo')};
 }
@@ -60,16 +61,15 @@ EOF
         );
 
         $t = new Twig_Node(array(
-            new Twig_Node_Expression_Constant(true, 1),
-            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 1), 1),
-            new Twig_Node_Expression_Constant(false, 1),
-            new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 1), 1),
-        ), array(), 1);
+            new Twig_Node_Expression_Constant(true, 0),
+            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 0), 0),
+            new Twig_Node_Expression_Constant(false, 0),
+            new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 0), 0),
+        ), array(), 0);
         $else = null;
-        $node = new Twig_Node_If($t, $else, 1);
+        $node = new Twig_Node_If($t, $else, 0);
 
         $tests[] = array($node, <<<EOF
-// line 1
 if (true) {
     echo {$this->getVariableGetter('foo')};
 } elseif (false) {
@@ -79,14 +79,13 @@ EOF
         );
 
         $t = new Twig_Node(array(
-            new Twig_Node_Expression_Constant(true, 1),
-            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 1), 1),
-        ), array(), 1);
-        $else = new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 1), 1);
-        $node = new Twig_Node_If($t, $else, 1);
+            new Twig_Node_Expression_Constant(true, 0),
+            new Twig_Node_Print(new Twig_Node_Expression_Name('foo', 0), 0),
+        ), array(), 0);
+        $else = new Twig_Node_Print(new Twig_Node_Expression_Name('bar', 0), 0);
+        $node = new Twig_Node_If($t, $else, 0);
 
         $tests[] = array($node, <<<EOF
-// line 1
 if (true) {
     echo {$this->getVariableGetter('foo')};
 } else {

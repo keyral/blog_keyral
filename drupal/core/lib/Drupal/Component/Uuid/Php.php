@@ -2,12 +2,10 @@
 
 /**
  * @file
- * Contains \Drupal\Component\Uuid\Php.
+ * Definition of Drupal\Component\Uuid\Php.
  */
 
 namespace Drupal\Component\Uuid;
-
-use Drupal\Component\Utility\Crypt;
 
 /**
  * Generates a UUID v4 using PHP code.
@@ -19,10 +17,10 @@ use Drupal\Component\Utility\Crypt;
 class Php implements UuidInterface {
 
   /**
-   * {@inheritdoc}
+   * Implements Drupal\Component\Uuid\UuidInterface::generate().
    */
   public function generate() {
-    $hex = substr(hash('sha256', Crypt::randomBytes(16)), 0, 32);
+    $hex = substr(hash('sha256', drupal_random_bytes(16)), 0, 32);
 
     // The field names refer to RFC 4122 section 4.1.2.
     $time_low = substr($hex, 0, 8);
@@ -46,5 +44,4 @@ class Php implements UuidInterface {
 
     return $uuid;
   }
-
 }

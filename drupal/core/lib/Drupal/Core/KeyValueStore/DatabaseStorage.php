@@ -7,7 +7,6 @@
 
 namespace Drupal\Core\KeyValueStore;
 
-use Drupal\Component\Serialization\SerializationInterface;
 use Drupal\Core\Database\Query\Merge;
 use Drupal\Core\Database\Connection;
 
@@ -18,13 +17,6 @@ use Drupal\Core\Database\Connection;
  * to store key/value data.
  */
 class DatabaseStorage extends StorageBase {
-
-  /**
-   * The serialization class to use.
-   *
-   * @var \Drupal\Component\Serialization\SerializationInterface
-   */
-  protected $serializer;
 
   /**
    * The database connection.
@@ -45,28 +37,13 @@ class DatabaseStorage extends StorageBase {
    *
    * @param string $collection
    *   The name of the collection holding key and value pairs.
-   * @param \Drupal\Component\Serialization\SerializationInterface $serializer
-   *   The serialization class to use.
-   * @param \Drupal\Core\Database\Connection $connection
-   *   The database connection to use.
    * @param string $table
    *   The name of the SQL table to use, defaults to key_value.
    */
-  public function __construct($collection, SerializationInterface $serializer, Connection $connection, $table = 'key_value') {
+  public function __construct($collection, Connection $connection, $table = 'key_value') {
     parent::__construct($collection);
-    $this->serializer = $serializer;
     $this->connection = $connection;
     $this->table = $table;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function has($key) {
-    return (bool) $this->connection->query('SELECT 1 FROM {' . $this->connection->escapeTable($this->table) . '} WHERE collection = :collection AND name = :key', array(
-      ':collection' => $this->collection,
-      ':key' => $key,
-    ))->fetchField();
   }
 
   /**
@@ -78,7 +55,7 @@ class DatabaseStorage extends StorageBase {
       $result = $this->connection->query('SELECT name, value FROM {' . $this->connection->escapeTable($this->table) . '} WHERE name IN (:keys) AND collection = :collection', array(':keys' => $keys, ':collection' => $this->collection))->fetchAllAssoc('name');
       foreach ($keys as $key) {
         if (isset($result[$key])) {
-          $values[$key] = $this->serializer->decode($result[$key]->value);
+          $values[$key] = unserialize($result[$key]->value);
         }
       }
     }
@@ -99,7 +76,7 @@ class DatabaseStorage extends StorageBase {
 
     foreach ($result as $item) {
       if ($item) {
-        $values[$item->name] = $this->serializer->decode($item->value);
+        $values[$item->name] = unserialize($item->value);
       }
     }
     return $values;
@@ -110,11 +87,11 @@ class DatabaseStorage extends StorageBase {
    */
   public function set($key, $value) {
     $this->connection->merge($this->table)
-      ->keys(array(
+      ->key(array(
         'name' => $key,
         'collection' => $this->collection,
       ))
-      ->fields(array('value' => $this->serializer->encode($value)))
+      ->fields(array('value' => serialize($value)))
       ->execute();
   }
 
@@ -126,23 +103,12 @@ class DatabaseStorage extends StorageBase {
       ->insertFields(array(
         'collection' => $this->collection,
         'name' => $key,
-        'value' => $this->serializer->encode($value),
+        'value' => serialize($value),
       ))
       ->condition('collection', $this->collection)
       ->condition('name', $key)
       ->execute();
     return $result == Merge::STATUS_INSERT;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function rename($key, $new_key) {
-    $this->connection->update($this->table)
-      ->fields(array('name' => $new_key))
-      ->condition('collection', $this->collection)
-      ->condition('name', $key)
-      ->execute();
   }
 
   /**
@@ -159,12 +125,4 @@ class DatabaseStorage extends StorageBase {
     while (count($keys));
   }
 
-  /**
-   * Implements Drupal\Core\KeyValueStore\KeyValueStoreInterface::deleteAll().
-   */
-  public function deleteAll() {
-    $this->connection->delete($this->table)
-      ->condition('collection', $this->collection)
-      ->execute();
-  }
 }

@@ -4,37 +4,39 @@
  * @file
  * The PHP page that serves all page requests on a Drupal installation.
  *
+ * The routines here dispatch control to the appropriate handler, which then
+ * prints the appropriate page.
+ *
  * All Drupal code is released under the GNU General Public License.
  * See COPYRIGHT.txt and LICENSE.txt files in the "core" directory.
  */
 
 use Drupal\Core\DrupalKernel;
-use Drupal\Core\Site\Settings;
 use Symfony\Component\HttpFoundation\Request;
 
-$autoloader = require_once __DIR__ . '/core/vendor/autoload.php';
+/**
+ * Root directory of Drupal installation.
+ */
+define('DRUPAL_ROOT', getcwd());
 
-try {
+// Bootstrap all of Drupal's subsystems, but do not initialize anything that
+// depends on the fully resolved Drupal path, because path resolution happens
+// during the REQUEST event of the kernel.
+// @see Drupal\Core\EventSubscriber\PathSubscriber;
+// @see Drupal\Core\EventSubscriber\LegacyRequestSubscriber;
+require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
 
-  $request = Request::createFromGlobals();
-  $kernel = DrupalKernel::createFromRequest($request, $autoloader, 'prod');
-  $response = $kernel
-    ->handlePageCache($request)
-    ->handle($request)
-      // Handle the response object.
-      ->prepare($request)->send();
-  $kernel->terminate($request, $response);
-}
-catch (Exception $e) {
-  $message = 'If you have just changed code (for example deployed a new module or moved an existing one) read <a href="http://drupal.org/documentation/rebuild">http://drupal.org/documentation/rebuild</a>';
-  if (Settings::get('rebuild_access', FALSE)) {
-    $rebuild_path = $GLOBALS['base_url'] . '/rebuild.php';
-    $message .= " or run the <a href=\"$rebuild_path\">rebuild script</a>";
-  }
+// @todo Figure out how best to handle the Kernel constructor parameters.
+$kernel = new DrupalKernel('prod', FALSE, drupal_classloader());
 
-  // Set the response code manually. Otherwise, this response will default to a
-  // 200.
-  http_response_code(500);
-  print $message;
-  throw $e;
-}
+// @todo Remove this once everything in the bootstrap has been
+//   converted to services in the DIC.
+$kernel->boot();
+drupal_bootstrap(DRUPAL_BOOTSTRAP_CODE);
+
+// Create a request object from the HTTPFoundation.
+$request = Request::createFromGlobals();
+$response = $kernel->handle($request)->prepare($request)->send();
+
+$kernel->terminate($request, $response);

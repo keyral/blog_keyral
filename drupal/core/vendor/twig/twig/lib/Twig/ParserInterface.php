@@ -12,8 +12,8 @@
 /**
  * Interface implemented by parser classes.
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @deprecated since 1.12 (to be removed in 2.0)
+ * @package twig
+ * @author  Fabien Potencier <fabien@symfony.com>
  */
 interface Twig_ParserInterface
 {
@@ -23,8 +23,6 @@ interface Twig_ParserInterface
      * @param Twig_TokenStream $stream A token stream instance
      *
      * @return Twig_Node_Module A node tree
-     *
-     * @throws Twig_Error_Syntax When the token stream is syntactically or semantically wrong
      */
-    public function parse(Twig_TokenStream $stream);
+    function parse(Twig_TokenStream $stream);
 }

@@ -19,8 +19,6 @@ namespace Drupal\Core\Cache;
  * volatile backend but found in the persistent one will be propagated back up
  * to ensure fast retrieval on the next request. On cache sets and deletes, both
  * backends will be invoked to ensure consistency.
- *
- * @ingroup cache
  */
 
 class BackendChain implements CacheBackendInterface {
@@ -47,7 +45,7 @@ class BackendChain implements CacheBackendInterface {
    * @param CacheBackendInterface $backend
    *   The cache backend to be appended to the cache chain.
    *
-   * @return \Drupal\Core\Cache\BackendChain
+   * @return Drupal\Core\Cache\BackendChain
    *   The called object.
    */
   public function appendBackend(CacheBackendInterface $backend) {
@@ -62,7 +60,7 @@ class BackendChain implements CacheBackendInterface {
    * @param CacheBackendInterface $backend
    *   The backend to be prepended to the cache chain.
    *
-   * @return \Drupal\Core\Cache\BackendChain
+   * @return Drupal\Core\Cache\BackendChain
    *   The called object.
    */
   public function prependBackend(CacheBackendInterface $backend) {
@@ -125,18 +123,9 @@ class BackendChain implements CacheBackendInterface {
   /**
    * Implements Drupal\Core\Cache\CacheBackendInterface::set().
    */
-  public function set($cid, $data, $expire = Cache::PERMANENT, array $tags = array()) {
+  public function set($cid, $data, $expire = CacheBackendInterface::CACHE_PERMANENT, array $tags = array()) {
     foreach ($this->backends as $backend) {
       $backend->set($cid, $data, $expire, $tags);
-    }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setMultiple(array $items) {
-    foreach ($this->backends as $backend) {
-      $backend->setMultiple($items);
     }
   }
 
@@ -173,6 +162,15 @@ class BackendChain implements CacheBackendInterface {
   public function deleteAll() {
     foreach ($this->backends as $backend) {
       $backend->deleteAll();
+    }
+  }
+
+  /**
+   * Implements Drupal\Core\Cache\CacheBackendInterface::expire().
+   */
+  public function deleteExpired() {
+    foreach ($this->backends as $backend) {
+      $backend->deleteExpired();
     }
   }
 
@@ -222,12 +220,15 @@ class BackendChain implements CacheBackendInterface {
   }
 
   /**
-   * {@inheritdoc}
+   * Implements Drupal\Core\Cache\CacheBackendInterface::isEmpty().
    */
-  public function removeBin() {
+  public function isEmpty() {
     foreach ($this->backends as $backend) {
-      $backend->removeBin();
+      if (!$backend->isEmpty()) {
+        return FALSE;
+      }
     }
-  }
 
+    return TRUE;
+  }
 }

@@ -7,6 +7,8 @@
 
 namespace Drupal\Core\Database;
 
+use Traversable;
+
 /**
  * Represents a prepared statement.
  *
@@ -25,29 +27,8 @@ namespace Drupal\Core\Database;
  * @code
  * class Drupal\Core\Database\Driver\oracle\Statement implements Iterator, Drupal\Core\Database\StatementInterface {}
  * @endcode
- *
- * @ingroup database
  */
-interface StatementInterface extends \Traversable {
-
-  /**
-   * Constructs a new PDOStatement object.
-   *
-   * The PDO manual does not document this constructor, but when overriding the
-   * PDOStatement class with a custom without this constructor, PDO will throw
-   * the internal exception/warning:
-   *
-   * "PDO::query(): SQLSTATE[HY000]: General error: user-supplied statement does
-   *  not accept constructor arguments"
-   *
-   * PDO enforces that the access type of this constructor must be protected,
-   * and lastly, it also enforces that a custom PDOStatement interface (like
-   * this) omits the constructor (declaring it results in fatal errors
-   * complaining about "the access type must not be public" if it is public, and
-   * "the access type must be omitted" if it is protected; i.e., conflicting
-   * statements). The access type has to be protected.
-   */
-  //protected function __construct(Connection $dbh);
+interface StatementInterface extends Traversable {
 
   /**
    * Executes a prepared statement
@@ -76,10 +57,7 @@ interface StatementInterface extends \Traversable {
    *
    * @return
    *   The number of rows affected by the last DELETE, INSERT, or UPDATE
-   *   statement executed or throws \Drupal\Core\Database\RowCountException
-   *   if the last executed statement was SELECT.
-   *
-   * @throws \Drupal\Core\Database\RowCountException
+   *   statement executed.
    */
   public function rowCount();
 
@@ -135,7 +113,7 @@ interface StatementInterface extends \Traversable {
   /**
    * Fetches the next row and returns it as an object.
    *
-   * The object will be of the class specified by StatementInterface::setFetchMode()
+   * The object will be of the class specified by DatabaseStatementInterface::setFetchMode()
    * or stdClass if not specified.
    */
   // public function fetchObject();

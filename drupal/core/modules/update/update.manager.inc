@@ -7,7 +7,7 @@
  * This allows site administrators with the 'administer software updates'
  * permission to either upgrade existing projects, or download and install new
  * ones, so long as the killswitch setting ('allow_authorize_operations') is
- * not FALSE.
+ * still TRUE.
  *
  * To install new code, the administrator is prompted for either the URL of an
  * archive file, or to directly upload the archive file. The archive is loaded
@@ -36,10 +36,8 @@
  * root.
  */
 
-use Drupal\Component\Utility\String;
 use Drupal\Core\Updater\Updater;
 use Drupal\Core\FileTransfer\Local;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * @defgroup update_manager_update Update Manager module: update
@@ -62,10 +60,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * @see update_manager_update_form_validate()
  * @see update_manager_update_form_submit()
  * @see update_menu()
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0. Use
- *   \Drupal\update\Form\UpdateForm::reportUpdate() or
- *   \Drupal\update\Form\UpdateForm::moduleUpdate().
+ * @ingroup forms
  */
 function update_manager_update_form($form, $form_state = array(), $context) {
   if (!_update_manager_check_backends($form, 'update')) {
@@ -82,7 +77,7 @@ function update_manager_update_form($form, $form_state = array(), $context) {
     return $form;
   }
 
-  $form['#attached']['library'][] = 'update/drupal.update.admin';
+  $form['#attached']['css'][] = drupal_get_path('module', 'update') . '/update.css';
 
   // This will be a nested array. The first key is the kind of project, which
   // can be either 'enabled', 'disabled', 'manual' (projects which require
@@ -108,14 +103,14 @@ function update_manager_update_form($form, $form_state = array(), $context) {
         $project_name = l($project['title'], $project['link']);
       }
       else {
-        $project_name = String::checkPlain($project['title']);
+        $project_name = check_plain($project['title']);
       }
     }
     elseif (!empty($project['info']['name'])) {
-      $project_name = String::checkPlain($project['info']['name']);
+      $project_name = check_plain($project['info']['name']);
     }
     else {
-      $project_name = String::checkPlain($name);
+      $project_name = check_plain($name);
     }
     if ($project['project_type'] == 'theme' || $project['project_type'] == 'theme-disabled') {
       $project_name .= ' ' . t('(Theme)');
@@ -166,11 +161,6 @@ function update_manager_update_form($form, $form_state = array(), $context) {
         continue 2;
     }
 
-    // Use the project title for the tableselect checkboxes.
-    $entry['title'] = array('data' => array(
-      '#title' => $entry['title'],
-      '#markup' => $entry['title'],
-    ));
     $entry['#attributes'] = array('class' => array('update-' . $type));
 
     // Drupal core needs to be upgraded manually.
@@ -178,9 +168,9 @@ function update_manager_update_form($form, $form_state = array(), $context) {
 
     if ($needs_manual) {
       // There are no checkboxes in the 'Manual updates' table so it will be
-      // rendered by _theme('table'), not _theme('tableselect'). Since the data
+      // rendered by theme('table'), not theme('tableselect'). Since the data
       // formats are incompatible, we convert now to the format expected by
-      // _theme('table').
+      // theme('table').
       unset($entry['#weight']);
       $attributes = $entry['#attributes'];
       unset($entry['#attributes']);
@@ -267,9 +257,8 @@ function update_manager_update_form($form, $form_state = array(), $context) {
     $prefix = '<h2>' . t('Manual updates required') . '</h2>';
     $prefix .= '<p>' . t('Updates of Drupal core are not supported at this time.') . '</p>';
     $form['manual_updates'] = array(
-      '#type' => 'table',
-      '#header' => $headers,
-      '#rows' => $projects['manual'],
+      '#type' => 'markup',
+      '#markup' => theme('table', array('header' => $headers, 'rows' => $projects['manual'])),
       '#prefix' => $prefix,
       '#weight' => 120,
     );
@@ -289,12 +278,8 @@ function update_manager_update_form($form, $form_state = array(), $context) {
  */
 function theme_update_manager_update_form($variables) {
   $form = $variables['form'];
-  $last = \Drupal::state()->get('update.last_check') ?: 0;
-  $update_last_check = array(
-    '#theme' => 'update_last_check',
-    '#last' => $last,
-  );
-  $output = drupal_render($update_last_check);
+  $last = state()->get('update.last_check') ?: 0;
+  $output = theme('update_last_check', array('last' => $last));
   $output .= drupal_render_children($form);
   return $output;
 }
@@ -314,7 +299,7 @@ function update_manager_update_form_validate($form, &$form_state) {
     $disabled = array_filter($form_state['values']['disabled_projects']);
   }
   if (empty($enabled) && empty($disabled)) {
-    form_set_error('projects', $form_state, t('You must select at least one project to update.'));
+    form_set_error('projects', t('You must select at least one project to update.'));
   }
 }
 
@@ -362,17 +347,16 @@ function update_manager_update_form_submit($form, &$form_state) {
  */
 function update_manager_download_batch_finished($success, $results) {
   if (!empty($results['errors'])) {
-    $item_list = array(
-      '#theme' => 'item_list',
-      '#title' => t('Downloading updates failed:'),
-      '#items' => $results['errors'],
+    $error_list = array(
+      'title' => t('Downloading updates failed:'),
+      'items' => $results['errors'],
     );
-    drupal_set_message(drupal_render($item_list), 'error');
+    drupal_set_message(theme('item_list', $error_list), 'error');
   }
   elseif ($success) {
     drupal_set_message(t('Updates downloaded successfully.'));
     $_SESSION['update_manager_update_projects'] = $results['projects'];
-    return new RedirectResponse(url('admin/update/ready', array('absolute' => TRUE)));
+    drupal_goto('admin/update/ready');
   }
   else {
     // Ideally we're catching all Exceptions, so they should never see this,
@@ -396,6 +380,7 @@ function update_manager_download_batch_finished($success, $results) {
  *
  * @see update_manager_update_ready_form_submit()
  * @see update_menu()
+ * @ingroup forms
  */
 function update_manager_update_ready_form($form, &$form_state) {
   if (!_update_manager_check_backends($form, 'update')) {
@@ -438,9 +423,9 @@ function update_manager_update_ready_form($form, &$form_state) {
  */
 function update_manager_update_ready_form_submit($form, &$form_state) {
   // Store maintenance_mode setting so we can restore it when done.
-  $_SESSION['maintenance_mode'] = \Drupal::state()->get('system.maintenance_mode');
+  $_SESSION['maintenance_mode'] = config('system.maintenance')->get('enabled');
   if ($form_state['values']['maintenance_mode'] == TRUE) {
-    \Drupal::state()->set('system.maintenance_mode', TRUE);
+    config('system.maintenance')->set('enabled', TRUE)->save();
   }
 
   if (!empty($_SESSION['update_manager_update_projects'])) {
@@ -509,10 +494,7 @@ function update_manager_update_ready_form_submit($form, &$form_state) {
  * @see update_manager_install_form_validate()
  * @see update_manager_install_form_submit()
  * @see update_menu()
- *
- * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0. Use
- *   \Drupal\update\Form\UpdateForm::reportInstall() or
- *   \Drupal\update\Form\UpdateForm::moduleInstall().
+ * @ingroup forms
  */
 function update_manager_install_form($form, &$form_state, $context) {
   if (!_update_manager_check_backends($form, 'install')) {
@@ -630,9 +612,8 @@ function _update_manager_check_backends(&$form, $operation) {
  * @see update_manager_install_form_submit()
  */
 function update_manager_install_form_validate($form, &$form_state) {
-  $uploaded_file = \Drupal::request()->files->get('files[project_upload]', NULL, TRUE);
-  if (!($form_state['values']['project_url'] XOR !empty($uploaded_file))) {
-    form_set_error('project_url', $form_state, t('You must either provide a URL or upload an archive file to install.'));
+  if (!($form_state['values']['project_url'] XOR !empty($_FILES['files']['name']['project_upload']))) {
+    form_set_error('project_url', t('You must either provide a URL or upload an archive file to install.'));
   }
 }
 
@@ -657,19 +638,19 @@ function update_manager_install_form_submit($form, &$form_state) {
     $field = 'project_url';
     $local_cache = update_manager_file_get($form_state['values']['project_url']);
     if (!$local_cache) {
-      drupal_set_message(t('Unable to retrieve Drupal project from %url.', array('%url' => $form_state['values']['project_url'])), 'error');
+      form_set_error($field, t('Unable to retrieve Drupal project from %url.', array('%url' => $form_state['values']['project_url'])));
       return;
     }
   }
   elseif ($_FILES['files']['name']['project_upload']) {
     $validators = array('file_validate_extensions' => array(archiver_get_extensions()));
     $field = 'project_upload';
-    if (!($finfo = file_save_upload($field, $validators, NULL, 0, FILE_EXISTS_REPLACE))) {
-      // Failed to upload the file. file_save_upload() calls
-      // drupal_set_message() on failure.
+    if (!($finfo = file_save_upload($field, $validators, NULL, FILE_EXISTS_REPLACE))) {
+      // Failed to upload the file. file_save_upload() calls form_set_error() on
+      // failure.
       return;
     }
-    $local_cache = $finfo->getFileUri();
+    $local_cache = $finfo->uri;
   }
 
   $directory = _update_manager_extract_directory();
@@ -677,13 +658,13 @@ function update_manager_install_form_submit($form, &$form_state) {
     $archive = update_manager_archive_extract($local_cache, $directory);
   }
   catch (Exception $e) {
-    drupal_set_message($e->getMessage(), 'error');
+    form_set_error($field, $e->getMessage());
     return;
   }
 
   $files = $archive->listContents();
   if (!$files) {
-    drupal_set_message(t('Provided archive contains no files.'), 'error');
+    form_set_error($field, t('Provided archive contains no files.'));
     return;
   }
 
@@ -694,7 +675,7 @@ function update_manager_install_form_submit($form, &$form_state) {
 
   $archive_errors = update_manager_archive_verify($project, $local_cache, $directory);
   if (!empty($archive_errors)) {
-    drupal_set_message(array_shift($archive_errors), 'error');
+    form_set_error($field, array_shift($archive_errors));
     // @todo: Fix me in D8: We need a way to set multiple errors on the same
     // form element and have all of them appear!
     if (!empty($archive_errors)) {
@@ -713,7 +694,7 @@ function update_manager_install_form_submit($form, &$form_state) {
     $updater = Updater::factory($project_location);
   }
   catch (Exception $e) {
-    drupal_set_message($e->getMessage(), 'error');
+    form_set_error($field, $e->getMessage());
     return;
   }
 
@@ -721,16 +702,16 @@ function update_manager_install_form_submit($form, &$form_state) {
     $project_title = Updater::getProjectTitle($project_location);
   }
   catch (Exception $e) {
-    drupal_set_message($e->getMessage(), 'error');
+    form_set_error($field, $e->getMessage());
     return;
   }
 
   if (!$project_title) {
-    drupal_set_message(t('Unable to determine %project name.', array('%project' => $project)), 'error');
+    form_set_error($field, t('Unable to determine %project name.', array('%project' => $project)));
   }
 
   if ($updater->isInstalled()) {
-    drupal_set_message(t('%project is already installed.', array('%project' => $project_title)), 'error');
+    form_set_error($field, t('%project is already installed.', array('%project' => $project_title)));
     return;
   }
 
@@ -828,7 +809,7 @@ function update_manager_archive_extract($file, $directory) {
  *   are no errors, it will be an empty array.
  */
 function update_manager_archive_verify($project, $archive_file, $directory) {
-  return \Drupal::moduleHandler()->invokeAll('verify_update_archive', array($project, $archive_file, $directory));
+  return module_invoke_all('verify_update_archive', $project, $archive_file, $directory);
 }
 
 /**

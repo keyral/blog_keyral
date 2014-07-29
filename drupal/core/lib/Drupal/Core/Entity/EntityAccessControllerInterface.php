@@ -2,16 +2,13 @@
 
 /**
  * @file
- * Contains \Drupal\Core\Entity\EntityAccessControllerInterface.
+ * Contains Drupal\Core\Entity\EntityAccessControllerInterface.
  */
 
 namespace Drupal\Core\Entity;
 
-use Drupal\Core\Field\FieldItemListInterface;
-use Drupal\Core\Extension\ModuleHandlerInterface;
-use Drupal\Core\Field\FieldDefinitionInterface;
-use Drupal\Core\Language\LanguageInterface;
-use Drupal\Core\Session\AccountInterface;
+// @todo Don't depend on module level code.
+use Drupal\user\Plugin\Core\Entity\User;
 
 /**
  * Defines a common interface for entity access controller classes.
@@ -19,81 +16,70 @@ use Drupal\Core\Session\AccountInterface;
 interface EntityAccessControllerInterface {
 
   /**
-   * Checks access to an operation on a given entity or entity translation.
-   *
-   * Use \Drupal\Core\Entity\EntityAccessControllerInterface::createAccess()
-   * to check access to create an entity.
+   * Checks 'view' access for a given entity or entity translation.
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity for which to check access.
-   * @param string $operation
-   *   The operation access should be checked for.
-   *   Usually one of "view", "update" or "delete".
+   *   The entity for which to check 'view' access.
    * @param string $langcode
    *   (optional) The language code for which to check access. Defaults to
-   *   LanguageInterface::LANGCODE_DEFAULT.
-   * @param \Drupal\Core\Session\AccountInterface $account
-   *   (optional) The user session for which to check access, or NULL to check
-   *   access for the current user. Defaults to NULL.
+   *   LANGUAGE_DEFAULT.
+   * @param \Drupal\user\Plugin\Core\Entity\User $account
+   *   (optional) The user for which to check access, or NULL to check access
+   *   for the current user. Defaults to NULL.
    *
    * @return bool
    *   TRUE if access was granted, FALSE otherwise.
    */
-  public function access(EntityInterface $entity, $operation, $langcode = LanguageInterface::LANGCODE_DEFAULT, AccountInterface $account = NULL);
+  public function viewAccess(EntityInterface $entity, $langcode = LANGUAGE_DEFAULT, User $account = NULL);
 
   /**
-   * Checks access to create an entity.
+   * Checks 'create' access for a given entity or entity translation.
    *
-   * @param string $entity_bundle
-   *   (optional) The bundle of the entity. Required if the entity supports
-   *   bundles, defaults to NULL otherwise.
-   * @param \Drupal\Core\Session\AccountInterface $account
-   *   (optional) The user session for which to check access, or NULL to check
-   *   access for the current user. Defaults to NULL.
-   * @param array $context
-   *   (optional) An array of key-value pairs to pass additional context when
-   *   needed.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity for which to check 'create' access.
+   * @param string $langcode
+   *   (optional) The language code for which to check access. Defaults to
+   *   LANGUAGE_DEFAULT.
+   * @param \Drupal\user\Plugin\Core\Entity\User $account
+   *   (optional) The user for which to check access, or NULL to check access
+   *   for the current user. Defaults to NULL.
+   *
+   * @return bool
+   *   TRUE if access was granted, FALSE otherwise.
    */
-  public function createAccess($entity_bundle = NULL, AccountInterface $account = NULL, array $context = array());
-
-    /**
-   * Clears all cached access checks.
-   */
-  public function resetCache();
+  public function createAccess(EntityInterface $entity, $langcode = LANGUAGE_DEFAULT, User $account = NULL);
 
   /**
-   * Sets the module handler for this access controller.
+   * Checks 'update' access for a given entity or entity translation.
    *
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
-   *   The module handler.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity to check 'update' access.
+   * @param string $langcode
+   *   (optional) The language code for which to check access. Defaults to
+   *   LANGUAGE_DEFAULT.
+   * @param \Drupal\user\Plugin\Core\Entity\User $account
+   *   (optional) The user for which to check access, or NULL to check access
+   *   for the current user. Defaults to NULL.
    *
-   * @return $this
+   * @return bool
+   *   TRUE if access was granted, FALSE otherwise.
    */
-  public function setModuleHandler(ModuleHandlerInterface $module_handler);
+  public function updateAccess(EntityInterface $entity, $langcode = LANGUAGE_DEFAULT, User $account = NULL);
 
   /**
-   * Checks access to an operation on a given entity field.
+   * Checks 'delete' access for a given entity or entity translation.
    *
-   * This method does not determine whether access is granted to the entity
-   * itself, only the specific field. Callers are responsible for ensuring that
-   * entity access is also respected, for example by using
-   * \Drupal\Core\Entity\EntityAccessControllerInterface::access().
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity for which to check 'delete' access.
+   * @param string $langcode
+   *   (optional) The language code for which to check access. Defaults to
+   *   LANGUAGE_DEFAULT.
+   * @param \Drupal\user\Plugin\Core\Entity\User $account
+   *   (optional) The user for which to check access, or NULL to check access
+   *   for the current user. Defaults to NULL.
    *
-   * @param string $operation
-   *   The operation access should be checked for.
-   *   Usually one of "view" or "edit".
-   * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
-   *   The field definition.
-   * @param \Drupal\Core\Session\AccountInterface $account
-   *  (optional) The user session for which to check access, or NULL to check
-   *   access for the current user. Defaults to NULL.
-   * @param \Drupal\Core\Field\FieldItemListInterface $items
-   *   (optional) The field values for which to check access, or NULL if access
-   *    is checked for the field definition, without any specific value
-   *    available. Defaults to NULL.
-   *
-   * @see \Drupal\Core\Entity\EntityAccessControllerInterface::access()
+   * @return bool
+   *   TRUE if access was granted, FALSE otherwise.
    */
-  public function fieldAccess($operation, FieldDefinitionInterface $field_definition, AccountInterface $account = NULL, FieldItemListInterface $items = NULL);
-
+  public function deleteAccess(EntityInterface $entity, $langcode = LANGUAGE_DEFAULT, User $account = NULL);
 }

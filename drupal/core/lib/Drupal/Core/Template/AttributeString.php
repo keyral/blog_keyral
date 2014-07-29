@@ -2,12 +2,10 @@
 
 /**
  * @file
- * Contains \Drupal\Core\Template\AttributeString.
+ * Definition of Drupal\Core\Template\AttributeString.
  */
 
 namespace Drupal\Core\Template;
-
-use Drupal\Component\Utility\String;
 
 /**
  * A class that represents most standard HTML attributes.
@@ -22,7 +20,7 @@ use Drupal\Component\Utility\String;
  *  // Produces: <cat id="socks" style="background-color:white">.
  * @endcode
  *
- * @see \Drupal\Core\Template\Attribute
+ * @see Drupal\Core\Template\Attribute
  */
 class AttributeString extends AttributeValueBase {
 
@@ -30,7 +28,8 @@ class AttributeString extends AttributeValueBase {
    * Implements the magic __toString() method.
    */
   public function __toString() {
-    return String::checkPlain($this->value);
+    $this->printed = TRUE;
+    return check_plain($this->value);
   }
 
 }

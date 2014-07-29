@@ -12,8 +12,6 @@ use Drupal\Core\Database\Connection;
 
 /**
  * General class for an abstracted DELETE operation.
- *
- * @ingroup database
  */
 class Delete extends Query implements ConditionInterface {
 
@@ -36,8 +34,8 @@ class Delete extends Query implements ConditionInterface {
   /**
    * Constructs a Delete object.
    *
-   * @param \Drupal\Core\Database\Connection $connection
-   *   A Connection object.
+   * @param Drupal\Core\Database\Connection $connection
+   *   A DatabaseConnection object.
    * @param string $table
    *   Name of the table to associate with this query.
    * @param array $options

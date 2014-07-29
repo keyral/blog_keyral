@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Serializer\Encoder;
 
+use Symfony\Component\Serializer\Encoder\DecoderInterface;
 use Symfony\Component\Serializer\Exception\RuntimeException;
 
 /**
@@ -33,9 +34,9 @@ class ChainDecoder implements DecoderInterface
     /**
      * {@inheritdoc}
      */
-    final public function decode($data, $format, array $context = array())
+    final public function decode($data, $format)
     {
-        return $this->getDecoder($format)->decode($data, $format, $context);
+        return $this->getDecoder($format)->decode($data, $format);
     }
 
     /**

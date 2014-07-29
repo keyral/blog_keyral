@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy;
 class SessionHandlerProxyTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var \PHPUnit_Framework_MockObject_Matcher
+     * @var PHPUnit_Framework_MockObject_Matcher
      */
     private $mock;
 
@@ -52,11 +52,7 @@ class SessionHandlerProxyTest extends \PHPUnit_Framework_TestCase
 
         $this->assertFalse($this->proxy->isActive());
         $this->proxy->open('name', 'id');
-        if (version_compare(phpversion(), '5.4.0', '<')) {
-            $this->assertTrue($this->proxy->isActive());
-        } else {
-            $this->assertFalse($this->proxy->isActive());
-        }
+        $this->assertTrue($this->proxy->isActive());
     }
 
     public function testOpenFalse()

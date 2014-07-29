@@ -20,6 +20,7 @@ use Memcache;
  */
 class MemcacheProfilerStorage extends BaseMemcacheProfilerStorage
 {
+
     /**
      * @var Memcache
      */
@@ -29,8 +30,6 @@ class MemcacheProfilerStorage extends BaseMemcacheProfilerStorage
      * Internal convenience method that returns the instance of the Memcache
      *
      * @return Memcache
-     *
-     * @throws \RuntimeException
      */
     protected function getMemcache()
     {
@@ -42,7 +41,7 @@ class MemcacheProfilerStorage extends BaseMemcacheProfilerStorage
             $host = $matches[1] ?: $matches[2];
             $port = $matches[3];
 
-            $memcache = new Memcache();
+            $memcache = new Memcache;
             $memcache->addServer($host, $port);
 
             $this->memcache = $memcache;
@@ -105,6 +104,7 @@ class MemcacheProfilerStorage extends BaseMemcacheProfilerStorage
         //simulate append in Memcache <3.0
         $content = $memcache->get($key);
 
-        return $memcache->set($key, $content.$value, false, $expiration);
+        return $memcache->set($key, $content . $value, false, $expiration);
     }
+
 }

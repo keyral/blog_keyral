@@ -17,7 +17,8 @@
  * You can configure which optimizations you want to activate via the
  * optimizer mode.
  *
- * @author Fabien Potencier <fabien@symfony.com>
+ * @package twig
+ * @author  Fabien Potencier <fabien@symfony.com>
  */
 class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
 {
@@ -39,7 +40,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
      */
     public function __construct($optimizers = -1)
     {
-        if (!is_int($optimizers) || $optimizers > (self::OPTIMIZE_FOR | self::OPTIMIZE_RAW_FILTER | self::OPTIMIZE_VAR_ACCESS)) {
+        if (!is_int($optimizers) || $optimizers > 2) {
             throw new InvalidArgumentException(sprintf('Optimizer mode "%s" is not valid.', $optimizers));
         }
 
@@ -108,7 +109,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
         return $node;
     }
 
-    protected function optimizeVariables(Twig_NodeInterface $node, Twig_Environment $env)
+    protected function optimizeVariables($node, $env)
     {
         if ('Twig_Node_Expression_Name' === get_class($node) && $node->isSimple()) {
             $this->prependedNodes[0][] = $node->getAttribute('name');
@@ -129,7 +130,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
      * @param Twig_NodeInterface $node A Node
      * @param Twig_Environment   $env  The current Twig environment
      */
-    protected function optimizePrintNode(Twig_NodeInterface $node, Twig_Environment $env)
+    protected function optimizePrintNode($node, $env)
     {
         if (!$node instanceof Twig_Node_Print) {
             return $node;
@@ -153,7 +154,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
      * @param Twig_NodeInterface $node A Node
      * @param Twig_Environment   $env  The current Twig environment
      */
-    protected function optimizeRawFilter(Twig_NodeInterface $node, Twig_Environment $env)
+    protected function optimizeRawFilter($node, $env)
     {
         if ($node instanceof Twig_Node_Expression_Filter && 'raw' == $node->getNode('filter')->getAttribute('value')) {
             return $node->getNode('node');
@@ -168,7 +169,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
      * @param Twig_NodeInterface $node A Node
      * @param Twig_Environment   $env  The current Twig environment
      */
-    protected function enterOptimizeFor(Twig_NodeInterface $node, Twig_Environment $env)
+    protected function enterOptimizeFor($node, $env)
     {
         if ($node instanceof Twig_Node_For) {
             // disable the loop variable by default
@@ -217,7 +218,7 @@ class Twig_NodeVisitor_Optimizer implements Twig_NodeVisitorInterface
      * @param Twig_NodeInterface $node A Node
      * @param Twig_Environment   $env  The current Twig environment
      */
-    protected function leaveOptimizeFor(Twig_NodeInterface $node, Twig_Environment $env)
+    protected function leaveOptimizeFor($node, $env)
     {
         if ($node instanceof Twig_Node_For) {
             array_shift($this->loops);

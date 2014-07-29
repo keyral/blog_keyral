@@ -2,13 +2,11 @@
 
 /**
  * @file
- * Lists available colors and color schemes for the Bartik theme.
+ * Lists avalable colors and color schemes for the Bartik theme.
  */
 
 // Put the logo path into JavaScript for the live preview.
-$js = array('color' => array('logo' => theme_get_setting('logo.url', 'bartik')));
-$js_attached['#attached']['js'][] = array('data' => $js, 'type' => 'setting');
-drupal_render($js_attached);
+drupal_add_js(array('color' => array('logo' => theme_get_setting('logo', 'bartik'))), 'setting');
 
 $info = array(
   // Available colors and color labels used in theme.
@@ -43,13 +41,13 @@ $info = array(
       'title' => t('Firehouse'),
       'colors' => array(
         'top' => '#cd2d2d',
-        'bottom' => '#d64e4e',
+        'bottom' => '#cf3535',
         'bg' => '#ffffff',
         'sidebar' => '#f1f4f0',
         'sidebarborders' => '#ededed',
         'footer' => '#1f1d1c',
         'titleslogan' => '#fffeff',
-        'text' => '#888888',
+        'text' => '#3b3b3b',
         'link' => '#d6121f',
       ),
     ),
@@ -61,7 +59,7 @@ $info = array(
         'bg' => '#ffffff',
         'sidebar' => '#ffffff',
         'sidebarborders' => '#cccccc',
-        'footer' => '#016b83',
+        'footer' => '#24272c',
         'titleslogan' => '#000000',
         'text' => '#4a4a4a',
         'link' => '#019dbf',
@@ -119,8 +117,21 @@ $info = array(
     ),
   ),
 
+  // Color areas to fill (x, y, width, height).
+  'fill' => array(),
+
+  // Coordinates of all the theme slices (x, y, width, height)
+  // with their filename as used in the stylesheet.
+  'slices' => array(),
+
+  // Reference color used for blending. Matches the base.png's colors.
+  'blend_target' => '#ffffff',
+
   // Preview files.
   'preview_css' => 'color/preview.css',
   'preview_js' => 'color/preview.js',
   'preview_html' => 'color/preview.html',
+
+  // Base file for image generation.
+  'base_image' => 'color/base.png',
 );

@@ -32,7 +32,7 @@ use Drupal\Core\Database\Query\PlaceholderInterface;
  * The following keys are defined:
  *   - 'description': A string in non-markup plain text describing this table
  *     and its purpose. References to other tables should be enclosed in
- *     curly-brackets. For example, the node_field_revision table
+ *     curly-brackets. For example, the node_revisions table
  *     description field might contain "Stores per-revision title and
  *     body data for each {node}."
  *   - 'fields': An associative array ('fieldname' => specification)
@@ -42,7 +42,7 @@ use Drupal\Core\Database\Query\PlaceholderInterface;
  *       and its purpose. References to other tables should be enclosed in
  *       curly-brackets. For example, the node table vid field
  *       description might contain "Always holds the largest (most
- *       recent) {node_field_revision}.vid value for this nid."
+ *       recent) {node_revision}.vid value for this nid."
  *     - 'type': The generic datatype: 'char', 'varchar', 'text', 'blob', 'int',
  *       'float', 'numeric', or 'serial'. Most types just map to the according
  *       database engine specific datatypes. Use 'serial' for auto incrementing
@@ -130,6 +130,7 @@ use Drupal\Core\Database\Query\PlaceholderInterface;
  *     'promote'   => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
  *     'moderate'  => array('type' => 'int', 'not null' => TRUE,'default' => 0),
  *     'sticky'    => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
+ *     'tnid'      => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
  *     'translate' => array('type' => 'int', 'not null' => TRUE, 'default' => 0),
  *   ),
  *   'indexes' => array(
@@ -141,6 +142,7 @@ use Drupal\Core\Database\Query\PlaceholderInterface;
  *     'node_title_type'     => array('title', array('type', 4)),
  *     'node_type'           => array(array('type', 4)),
  *     'uid'                 => array('uid'),
+ *     'tnid'                => array('tnid'),
  *     'translate'           => array('translate'),
  *   ),
  *   'unique keys' => array(
@@ -148,7 +150,7 @@ use Drupal\Core\Database\Query\PlaceholderInterface;
  *   ),
  *   'foreign keys' => array(
  *     'node_revision' => array(
- *       'table' => 'node_field_revision',
+ *       'table' => 'node_revision',
  *       'columns' => array('vid' => 'vid'),
  *      ),
  *     'node_author' => array(
@@ -285,8 +287,8 @@ abstract class Schema implements PlaceholderInterface {
    * @param $add_prefix
    *   Boolean to indicate whether the table name needs to be prefixed.
    *
-   * @return \Drupal\Core\Database\Query\Condition
-   *   A Condition object.
+   * @return Drupal\Core\Database\Query\ConditionInterface
+   *   A Drupal\Core\Database\Query\Condition object.
    */
   protected function buildTableNameCondition($table_name, $operator = '=', $add_prefix = TRUE) {
     $info = $this->connection->getConnectionOptions();
@@ -386,9 +388,9 @@ abstract class Schema implements PlaceholderInterface {
    * @param $new_name
    *   The new name for the table.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If a table with the specified new name already exists.
    */
   abstract public function renameTable($table, $new_name);
@@ -406,24 +408,6 @@ abstract class Schema implements PlaceholderInterface {
   abstract public function dropTable($table);
 
   /**
-   * Copies the table schema.
-   *
-   * @param string $source
-   *   The name of the table to be used as source.
-   * @param string $destination
-   *   The name of the table to be used as destination.
-   *
-   * @return \Drupal\Core\Database\StatementInterface
-   *   The result of the executed query.
-   *
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
-   *   Thrown when the source table does not exist.
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
-   *   Thrown when the destination table already exists.
-   */
-  abstract public function copyTable($source, $destination);
-
-  /**
    * Add a new field to a table.
    *
    * @param $table
@@ -437,16 +421,16 @@ abstract class Schema implements PlaceholderInterface {
    *   This is most useful for creating NOT NULL columns with no default
    *   value in existing tables.
    * @param $keys_new
-   *   (optional) Keys and indexes specification to be created on the
+   *   Optional keys and indexes specification to be created on the
    *   table along with adding the field. The format is the same as a
    *   table specification but without the 'fields' element. If you are
    *   adding a type 'serial' field, you MUST specify at least one key
    *   or index including it in this array. See db_change_field() for more
    *   explanation why.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already has a field by that name.
    */
   abstract public function addField($table, $field, $spec, $keys_new = array());
@@ -475,7 +459,7 @@ abstract class Schema implements PlaceholderInterface {
    * @param $default
    *   Default value to be set. NULL for 'default NULL'.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table or field doesn't exist.
    */
   abstract public function fieldSetDefault($table, $field, $default);
@@ -488,7 +472,7 @@ abstract class Schema implements PlaceholderInterface {
    * @param $field
    *   The field to be altered.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table or field doesn't exist.
    */
   abstract public function fieldSetNoDefault($table, $field);
@@ -514,9 +498,9 @@ abstract class Schema implements PlaceholderInterface {
    * @param $fields
    *   Fields for the primary key.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already has a primary key.
    */
   abstract public function addPrimaryKey($table, $fields);
@@ -543,9 +527,9 @@ abstract class Schema implements PlaceholderInterface {
    * @param $fields
    *   An array of field names.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already has a key by that name.
    */
   abstract public function addUniqueKey($table, $name, $fields);
@@ -574,9 +558,9 @@ abstract class Schema implements PlaceholderInterface {
    * @param $fields
    *   An array of field names.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws Drupal\Core\Database\SchemaObjectDoesNotExistException
    *   If the specified table doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already has an index by that name.
    */
   abstract public function addIndex($table, $name, $fields);
@@ -651,13 +635,13 @@ abstract class Schema implements PlaceholderInterface {
    * @param $spec
    *   The field specification for the new field.
    * @param $keys_new
-   *   (optional) Keys and indexes specification to be created on the
+   *   Optional keys and indexes specification to be created on the
    *   table along with changing the field. The format is the same as a
    *   table specification but without the 'fields' element.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   * @throws DatabaseSchemaObjectDoesNotExistException
    *   If the specified table or source field doesn't exist.
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws DatabaseSchemaObjectExistsException
    *   If the specified destination field already exists.
    */
   abstract public function changeField($table, $field, $field_new, $spec, $keys_new = array());
@@ -670,7 +654,7 @@ abstract class Schema implements PlaceholderInterface {
    * @param $table
    *   A Schema API table definition array.
    *
-   * @throws \Drupal\Core\Database\SchemaObjectExistsException
+   * @throws Drupal\Core\Database\SchemaObjectExistsException
    *   If the specified table already exists.
    */
   public function createTable($name, $table) {
