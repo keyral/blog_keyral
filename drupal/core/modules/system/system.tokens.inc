@@ -4,9 +4,11 @@
  * @file
  * Builds placeholder replacement tokens system-wide data.
  *
- * This file handles tokens for the global 'site' token type, as well as
- * 'date' and 'file' tokens.
+ * This file handles tokens for the global 'site' and 'date' tokens.
  */
+
+use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\Xss;
 
 /**
  * Implements hook_token_info().
@@ -19,11 +21,6 @@ function system_token_info() {
   $types['date'] = array(
     'name' => t("Dates"),
     'description' => t("Tokens related to times and dates."),
-  );
-  $types['file'] = array(
-    'name' => t("Files"),
-    'description' => t("Tokens related to uploaded files."),
-    'needs-data' => 'file',
   );
 
   // Site-wide global tokens.
@@ -71,48 +68,11 @@ function system_token_info() {
   );
   $date['since'] = array(
     'name' => t("Time-since"),
-    'description' => t("A date in 'time-since' format. (%date)", array('%date' => format_interval(REQUEST_TIME - 360, 2))),
+    'description' => t("A date in 'time-since' format. (%date)", array('%date' => \Drupal::service('date')->formatInterval(REQUEST_TIME - 360, 2))),
   );
   $date['raw'] = array(
     'name' => t("Raw timestamp"),
     'description' => t("A date in UNIX timestamp format (%date)", array('%date' => REQUEST_TIME)),
-  );
-
-
-  // File related tokens.
-  $file['fid'] = array(
-    'name' => t("File ID"),
-    'description' => t("The unique ID of the uploaded file."),
-  );
-  $file['name'] = array(
-    'name' => t("File name"),
-    'description' => t("The name of the file on disk."),
-  );
-  $file['path'] = array(
-    'name' => t("Path"),
-    'description' => t("The location of the file relative to Drupal root."),
-  );
-  $file['mime'] = array(
-    'name' => t("MIME type"),
-    'description' => t("The MIME type of the file."),
-  );
-  $file['size'] = array(
-    'name' => t("File size"),
-    'description' => t("The size of the file."),
-  );
-  $file['url'] = array(
-    'name' => t("URL"),
-    'description' => t("The web-accessible URL for the file."),
-  );
-  $file['timestamp'] = array(
-    'name' => t("Timestamp"),
-    'description' => t("The date the file was most recently changed."),
-    'type' => 'date',
-  );
-  $file['owner'] = array(
-    'name' => t("Owner"),
-    'description' => t("The user who originally uploaded the file."),
-    'type' => 'user',
   );
 
   return array(
@@ -120,7 +80,6 @@ function system_token_info() {
     'tokens' => array(
       'site' => $site,
       'date' => $date,
-      'file' => $file,
     ),
   );
 }
@@ -129,6 +88,8 @@ function system_token_info() {
  * Implements hook_tokens().
  */
 function system_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $token_service = \Drupal::token();
+
   $url_options = array('absolute' => TRUE);
   if (isset($options['langcode'])) {
     $url_options['language'] = language_load($options['langcode']);
@@ -145,17 +106,17 @@ function system_tokens($type, $tokens, array $data = array(), array $options = a
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'name':
-          $site_name = config('system.site')->get('name');
-          $replacements[$original] = $sanitize ? check_plain($site_name) : $site_name;
+          $site_name = \Drupal::config('system.site')->get('name');
+          $replacements[$original] = $sanitize ? String::checkPlain($site_name) : $site_name;
           break;
 
         case 'slogan':
-          $slogan = config('system.site')->get('slogan');
-          $replacements[$original] = $sanitize ? filter_xss_admin($slogan) : $slogan;
+          $slogan = \Drupal::config('system.site')->get('slogan');
+          $replacements[$original] = $sanitize ? Xss::filterAdmin($slogan) : $slogan;
           break;
 
         case 'mail':
-          $replacements[$original] = config('system.site')->get('mail');
+          $replacements[$original] = \Drupal::config('system.site')->get('mail');
           break;
 
         case 'url':
@@ -196,72 +157,19 @@ function system_tokens($type, $tokens, array $data = array(), array $options = a
           break;
 
         case 'since':
-          $replacements[$original] = format_interval((REQUEST_TIME - $date), 2, $langcode);
+          $replacements[$original] = \Drupal::service('date')->formatInterval((REQUEST_TIME - $date), 2, $langcode);
           break;
 
         case 'raw':
-          $replacements[$original] = $sanitize ? check_plain($date) : $date;
+          $replacements[$original] = $sanitize ? String::checkPlain($date) : $date;
           break;
       }
     }
 
-    if ($created_tokens = token_find_with_prefix($tokens, 'custom')) {
+    if ($created_tokens = $token_service->findWithPrefix($tokens, 'custom')) {
       foreach ($created_tokens as $name => $original) {
         $replacements[$original] = format_date($date, 'custom', $name, NULL, $langcode);
       }
-    }
-  }
-
-  elseif ($type == 'file' && !empty($data['file'])) {
-    $file = $data['file'];
-
-    foreach ($tokens as $name => $original) {
-      switch ($name) {
-        // Basic keys and values.
-        case 'fid':
-          $replacements[$original] = $file->fid;
-          break;
-
-        // Essential file data
-        case 'name':
-          $replacements[$original] = $sanitize ? check_plain($file->filename) : $file->filename;
-          break;
-
-        case 'path':
-          $replacements[$original] = $sanitize ? check_plain($file->uri) : $file->uri;
-          break;
-
-        case 'mime':
-          $replacements[$original] = $sanitize ? check_plain($file->filemime) : $file->filemime;
-          break;
-
-        case 'size':
-          $replacements[$original] = format_size($file->filesize);
-          break;
-
-        case 'url':
-          $replacements[$original] = $sanitize ? check_plain(file_create_url($file->uri)) : file_create_url($file->uri);
-          break;
-
-        // These tokens are default variations on the chained tokens handled below.
-        case 'timestamp':
-          $replacements[$original] = format_date($file->timestamp, 'medium', '', NULL, $langcode);
-          break;
-
-        case 'owner':
-          $account = user_load($file->uid);
-          $name = user_format_name($account);
-          $replacements[$original] = $sanitize ? check_plain($name) : $name;
-          break;
-      }
-    }
-
-    if ($date_tokens = token_find_with_prefix($tokens, 'timestamp')) {
-      $replacements += token_generate('date', $date_tokens, array('date' => $file->timestamp), $options);
-    }
-
-    if (($owner_tokens = token_find_with_prefix($tokens, 'owner')) && $account = user_load($file->uid)) {
-      $replacements += token_generate('user', $owner_tokens, array('user' => $account), $options);
     }
   }
 

@@ -2,19 +2,18 @@
 
 /**
  * @file
- * Provide views data and handlers for user.module.
- *
- * @ingroup views_module_handlers
+ * Provide views data for user.module.
  */
+
+use Drupal\views\ViewExecutable;
 
 /**
  * Implements hook_views_data().
  */
 function user_views_data() {
-  // users table
 
-  // Define the base group of this table. Fields that don't
-  // have a group defined will go into this field by default.
+  // Define the base group of this table. Fields that don't have a group defined
+  // will go into this field by default.
   $data['users']['table']['group']  = t('User');
 
   $data['users']['table']['base'] = array(
@@ -26,17 +25,16 @@ function user_views_data() {
   $data['users']['table']['entity type'] = 'user';
   $data['users']['table']['wizard_id'] = 'user';
 
-  // uid
   $data['users']['uid'] = array(
     'title' => t('Uid'),
-    'help' => t('The user ID'), // The help that appears on the UI,
+    'help' => t('The user ID'),
     'field' => array(
       'id' => 'user',
-      'click sortable' => TRUE,
     ),
     'argument' => array(
       'id' => 'user_uid',
-      'name field' => 'name', // display this field in the summary
+      'name field' => 'name',
+      'empty field name' => \Drupal::config('user.settings')->get('anonymous'),
     ),
     'filter' => array(
       'title' => t('Name'),
@@ -49,14 +47,13 @@ function user_views_data() {
       'title' => t('Content authored'),
       'help' => t('Relate content to the user who created it. This relationship will create one record for each content item created by the user.'),
       'id' => 'standard',
-      'base' => 'node',
+      'base' => 'node_field_data',
       'base field' => 'uid',
       'field' => 'uid',
       'label' => t('nodes'),
     ),
   );
 
-  // uid_raw
   $data['users']['uid_raw'] = array(
     'help' => t('The raw numeric user ID.'),
     'real field' => 'uid',
@@ -66,7 +63,6 @@ function user_views_data() {
     ),
   );
 
-  // uid
   $data['users']['uid_representative'] = array(
     'relationship' => array(
       'title' => t('Representative node'),
@@ -79,11 +75,10 @@ function user_views_data() {
       'argument field' => 'uid',
       'base' => 'node',
       'field' => 'nid',
-      'relationship' => 'node:uid'
+      'relationship' => 'node_field_data:uid'
     ),
   );
 
-  // uid
   $data['users']['uid_current'] = array(
     'real field' => 'uid',
     'title' => t('Current'),
@@ -94,13 +89,11 @@ function user_views_data() {
     ),
   );
 
-  // name
   $data['users']['name'] = array(
-    'title' => t('Name'), // The item it appears as on the UI,
-    'help' => t('The user or author name.'), // The help that appears on the UI,
+    'title' => t('Name'),
+    'help' => t('The user or author name.'),
     'field' => array(
       'id' => 'user_name',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'standard',
@@ -115,14 +108,12 @@ function user_views_data() {
     ),
   );
 
-  // mail
   // Note that this field implements field level access control.
   $data['users']['mail'] = array(
-    'title' => t('E-mail'), // The item it appears as on the UI,
-    'help' => t('Email address for a given user. This field is normally not shown to users, so be cautious when using it.'), // The help that appears on the UI,
+    'title' => t('Email'),
+    'help' => t('Email address for a given user. This field is normally not shown to users, so be cautious when using it.'),
     'field' => array(
       'id' => 'user_mail',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'standard',
@@ -135,13 +126,11 @@ function user_views_data() {
     ),
   );
 
-  // language
   $data['users']['langcode'] = array(
-    'title' => t('Language'), // The item it appears as on the UI,
+    'title' => t('Language'),
     'help' => t('Language of the user'),
     'field' => array(
       'id' => 'user_language',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'standard',
@@ -154,22 +143,20 @@ function user_views_data() {
     ),
   );
 
-  // link
   $data['users']['view_user'] = array(
     'field' => array(
-      'title' => t('Link'),
+      'title' => t('Link to user'),
       'help' => t('Provide a simple link to the user.'),
       'id' => 'user_link',
+      'click sortable' => FALSE,
     ),
   );
 
-  // created field
   $data['users']['created'] = array(
-    'title' => t('Created date'), // The item it appears as on the UI,
-    'help' => t('The date the user was created.'), // The help that appears on the UI,
+    'title' => t('Created date'),
+    'help' => t('The date the user was created.'),
     'field' => array(
       'id' => 'date',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date'
@@ -184,7 +171,7 @@ function user_views_data() {
     'help' => t('Date in the form of CCYYMMDD.'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_fulldate',
+      'id' => 'date_fulldate',
     ),
   );
 
@@ -193,7 +180,7 @@ function user_views_data() {
     'help' => t('Date in the form of YYYYMM.'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_year_month',
+      'id' => 'date_year_month',
     ),
   );
 
@@ -202,7 +189,7 @@ function user_views_data() {
     'help' => t('Date in the form of YYYY.'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_year',
+      'id' => 'date_year',
     ),
   );
 
@@ -211,7 +198,7 @@ function user_views_data() {
     'help' => t('Date in the form of MM (01 - 12).'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_month',
+      'id' => 'date_month',
     ),
   );
 
@@ -220,7 +207,7 @@ function user_views_data() {
     'help' => t('Date in the form of DD (01 - 31).'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_day',
+      'id' => 'date_day',
     ),
   );
 
@@ -229,17 +216,15 @@ function user_views_data() {
     'help' => t('Date in the form of WW (01 - 53).'),
     'argument' => array(
       'field' => 'created',
-      'id' => 'node_created_week',
+      'id' => 'date_week',
     ),
   );
 
-  // access field
   $data['users']['access'] = array(
-    'title' => t('Last access'), // The item it appears as on the UI,
-    'help' => t("The user's last access date."), // The help that appears on the UI,
+    'title' => t('Last access'),
+    'help' => t("The user's last access date."),
     'field' => array(
       'id' => 'date',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date'
@@ -249,13 +234,11 @@ function user_views_data() {
     ),
   );
 
-  // login field
   $data['users']['login'] = array(
-    'title' => t('Last login'), // The item it appears as on the UI,
-    'help' => t("The user's last login date."), // The help that appears on the UI,
+    'title' => t('Last login'),
+    'help' => t("The user's last login date."),
     'field' => array(
       'id' => 'date',
-      'click sortable' => TRUE,
     ),
     'sort' => array(
       'id' => 'date'
@@ -265,14 +248,11 @@ function user_views_data() {
     ),
   );
 
-  // active status
   $data['users']['status'] = array(
-    'title' => t('Active'), // The item it appears as on the UI,
-    'help' => t('Whether a user is active or blocked.'), // The help that appears on the UI,
-     // Information for displaying a title as a field
+    'title' => t('Status'),
+    'help' => t('Whether a user is active or blocked.'),
     'field' => array(
       'id' => 'boolean',
-      'click sortable' => TRUE,
       'output formats' => array(
         'active-blocked' => array(t('Active'), t('Blocked')),
       ),
@@ -287,43 +267,64 @@ function user_views_data() {
     ),
   );
 
-  // log field
-  $data['users']['signature'] = array(
-    'title' => t('Signature'), // The item it appears as on the UI,
-    'help' => t("The user's signature."), // The help that appears on the UI,
-     // Information for displaying a title as a field
-    'field' => array(
-      'id' => 'markup',
-      'format' => filter_fallback_format(),
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-  );
+  if (\Drupal::moduleHandler()->moduleExists('filter')) {
+    $data['users']['signature'] = array(
+      'title' => t('Signature'),
+      'help' => t("The user's signature."),
+      'field' => array(
+        'id' => 'markup',
+        'format' => filter_fallback_format(),
+        'click sortable' => FALSE,
+      ),
+      'filter' => array(
+        'id' => 'string',
+      ),
+    );
+  }
+
+  if (\Drupal::moduleHandler()->moduleExists('content_translation')) {
+    $data['users']['translation_link'] = array(
+      'title' => t('Translation link'),
+      'help' => t('Provide a link to the translations overview for users.'),
+      'field' => array(
+        'id' => 'content_translation_link',
+      ),
+    );
+  }
 
   $data['users']['edit_node'] = array(
     'field' => array(
-      'title' => t('Edit link'),
+      'title' => t('Link to edit user'),
       'help' => t('Provide a simple link to edit the user.'),
       'id' => 'user_link_edit',
+      'click sortable' => FALSE,
     ),
   );
 
   $data['users']['cancel_node'] = array(
     'field' => array(
-      'title' => t('Cancel link'),
+      'title' => t('Link to cancel user'),
       'help' => t('Provide a simple link to cancel the user.'),
       'id' => 'user_link_cancel',
+      'click sortable' => FALSE,
     ),
   );
 
-  // users_roles table
+  $data['users']['data'] = array(
+    'title' => t('Data'),
+    'help' => t('Provides access to the user data service.'),
+    'real field' => 'uid',
+    'field' => array(
+      'id' => 'user_data',
+    ),
+  );
 
+  // Define the base group of this table. Fields that don't have a group defined
+  // will go into this field by default.
   $data['users_roles']['table']['group']  = t('User');
 
   // Explain how this table joins to others.
   $data['users_roles']['table']['join'] = array(
-     // Directly links to users table.
     'users' => array(
       'left_field' => 'uid',
       'field' => 'uid',
@@ -351,34 +352,7 @@ function user_views_data() {
     ),
   );
 
-  // role table
-
-  $data['role']['table']['join'] = array(
-     // Directly links to users table.
-    'users' => array(
-      'left_table' => 'users_roles',
-      'left_field' => 'rid',
-      'field' => 'rid',
-    ),
-    // needed for many to one helper sometimes
-    'users_roles' => array(
-      'left_field' => 'rid',
-      'field' => 'rid',
-    ),
-  );
-
-  // permission table
-  $data['role_permission']['table']['group']  = t('User');
-  $data['role_permission']['table']['join'] = array(
-     // Directly links to users table.
-    'users' => array(
-      'left_table' => 'users_roles',
-      'left_field' => 'rid',
-      'field' => 'rid',
-    ),
-  );
-
-  $data['role_permission']['permission'] = array(
+  $data['users_roles']['permission'] = array(
     'title' => t('Permission'),
     'help' => t('The user permissions.'),
     'field' => array(
@@ -387,59 +361,7 @@ function user_views_data() {
     ),
     'filter' => array(
       'id' => 'user_permissions',
-    ),
-  );
-
-  // authmap table
-
-  $data['authmap']['table']['group']  = t('User');
-  $data['authmap']['table']['join'] = array(
-     // Directly links to users table.
-    'users' => array(
-      'left_field' => 'uid',
-      'field' => 'uid',
-    ),
-  );
-
-  $data['authmap']['aid'] = array(
-    'title' => t('Authmap ID'),
-    'help' => t('The Authmap ID.'),
-    'field' => array(
-      'id' => 'numeric',
-    ),
-    'filter' => array(
-      'id' => 'numeric',
-      'numeric' => TRUE,
-    ),
-    'argument' => array(
-      'id' => 'numeric',
-      'numeric' => TRUE,
-    ),
-  );
-  $data['authmap']['authname'] = array(
-    'title' => t('Authentication name'),
-    'help' => t('The unique authentication name.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'numeric',
-    ),
-  );
-  $data['authmap']['module'] = array(
-    'title' => t('Authentication module'),
-    'help' => t('The name of the module managing the authentication entry.'),
-    'field' => array(
-      'id' => 'standard',
-    ),
-    'filter' => array(
-      'id' => 'string',
-    ),
-    'argument' => array(
-      'id' => 'string',
+      'real field' => 'rid',
     ),
   );
 
@@ -447,9 +369,23 @@ function user_views_data() {
 }
 
 /**
- * Allow replacement of current userid so we can cache these queries
+ * Implements hook_views_data_alter().
  */
-function user_views_query_substitutions($view) {
-  global $user;
-  return array('***CURRENT_USER***' => intval($user->uid));
+function user_views_data_alter(&$data) {
+  $data['users']['user_bulk_form'] = array(
+    'title' => t('Bulk update'),
+    'help' => t('Add a form element that lets you run operations on multiple users.'),
+    'field' => array(
+      'id' => 'user_bulk_form',
+    ),
+  );
+}
+
+/**
+ * Implements hook_views_plugins_argument_validator_alter().
+ */
+function user_views_plugins_argument_validator_alter(array &$plugins) {
+  $plugins['entity:user']['title'] = t('User ID');
+  $plugins['entity:user']['class'] = 'Drupal\user\Plugin\views\argument_validator\User';
+  $plugins['entity:user']['provider'] = 'user';
 }

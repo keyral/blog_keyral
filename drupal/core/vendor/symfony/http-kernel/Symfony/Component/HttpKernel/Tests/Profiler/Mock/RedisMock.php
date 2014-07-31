@@ -18,18 +18,11 @@ namespace Symfony\Component\HttpKernel\Tests\Profiler\Mock;
  */
 class RedisMock
 {
-
-    private $connected;
-    private $storage;
-
-    public function __construct()
-    {
-        $this->connected = false;
-        $this->storage = array();
-    }
+    private $connected = false;
+    private $storage = array();
 
     /**
-     * Add a memcached server to connection pool
+     * Add a server to connection pool
      *
      * @param string  $host
      * @param integer $port
@@ -235,6 +228,19 @@ class RedisMock
     private function storeData($key, $value)
     {
         $this->storage[$key] = serialize($value);
+
+        return true;
+    }
+
+    public function select($dbnum)
+    {
+        if (!$this->connected) {
+            return false;
+        }
+
+        if (0 > $dbnum) {
+            return false;
+        }
 
         return true;
     }

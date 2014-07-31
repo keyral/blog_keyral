@@ -38,7 +38,7 @@ interface StreamWrapperInterface extends PhpStreamWrapperInterface {
    * @param string $uri
    *   A string containing the URI that should be used for this instance.
    */
-  function setUri($uri);
+  public function setUri($uri);
 
   /**
    * Returns the stream resource URI.
@@ -60,37 +60,6 @@ interface StreamWrapperInterface extends PhpStreamWrapperInterface {
    *   Returns a string containing a web accessible URL for the resource.
    */
   public function getExternalUrl();
-
-  /**
-   * Returns the MIME type of the resource.
-   *
-   * @param string $uri
-   *   The URI, path, or filename.
-   * @param array $mapping
-   *   An optional map of extensions to their mimetypes, in the form:
-   *    - 'mimetypes': a list of mimetypes, keyed by an identifier,
-   *    - 'extensions': the mapping itself, an associative array in which
-   *      the key is the extension and the value is the mimetype identifier.
-   *
-   * @return string
-   *   Returns a string containing the MIME type of the resource.
-   */
-  public static function getMimeType($uri, $mapping = NULL);
-
-  /**
-   * Changes permissions of the resource.
-   *
-   * PHP lacks this functionality and it is not part of the official stream
-   * wrapper interface. This is a custom implementation for Drupal.
-   *
-   * @param int $mode
-   *   Integer value for the permissions. Consult PHP chmod() documentation
-   *   for more information.
-   *
-   * @return bool
-   *   Returns TRUE on success or FALSE on failure.
-   */
-  public function chmod($mode);
 
   /**
    * Returns canonical, absolute path of the resource.
@@ -122,4 +91,5 @@ interface StreamWrapperInterface extends PhpStreamWrapperInterface {
    * @see drupal_dirname()
    */
   public function dirname($uri = NULL);
+
 }

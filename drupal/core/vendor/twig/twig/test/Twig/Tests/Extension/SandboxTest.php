@@ -11,7 +11,7 @@
 
 class Twig_Tests_Extension_SandboxTest extends PHPUnit_Framework_TestCase
 {
-    static protected $params, $templates;
+    protected static $params, $templates;
 
     public function setUp()
     {
@@ -30,6 +30,7 @@ class Twig_Tests_Extension_SandboxTest extends PHPUnit_Framework_TestCase
             '1_basic6' => '{{ arr.obj }}',
             '1_basic7' => '{{ cycle(["foo","bar"], 1) }}',
             '1_basic8' => '{{ obj.getfoobar }}{{ obj.getFooBar }}',
+            '1_basic9' => '{{ obj.foobar }}{{ obj.fooBar }}',
             '1_basic'  => '{% if obj.foo %}{{ obj.foo|upper }}{% endif %}',
             '1_layout' => '{% block content %}{% endblock %}',
             '1_child'  => '{% extends "1_layout" %}{% block content %}{{ "a"|json_encode }}{% endblock %}',
@@ -127,6 +128,8 @@ class Twig_Tests_Extension_SandboxTest extends PHPUnit_Framework_TestCase
             FooObject::reset();
             $this->assertEquals('foobarfoobar', $twig->loadTemplate('1_basic8')->render(self::$params), 'Sandbox allow methods in a case-insensitive way');
             $this->assertEquals(2, FooObject::$called['getFooBar'], 'Sandbox only calls method once');
+
+            $this->assertEquals('foobarfoobar', $twig->loadTemplate('1_basic9')->render(self::$params), 'Sandbox allow methods via shortcut names (ie. without get/set)');
         }
     }
 
@@ -156,10 +159,13 @@ class Twig_Tests_Extension_SandboxTest extends PHPUnit_Framework_TestCase
     public function testMacrosInASandbox()
     {
         $twig = $this->getEnvironment(true, array('autoescape' => true), array('index' => <<<EOF
-{% macro test(text) %}<p>{{ text }}</p>{% endmacro %}
-{{ _self.test('username') }}
+{%- import _self as macros %}
+
+{%- macro test(text) %}<p>{{ text }}</p>{% endmacro %}
+
+{{- macros.test('username') }}
 EOF
-        ), array('macro'), array('escape'));
+        ), array('macro', 'import'), array('escape'));
 
         $this->assertEquals('<p>username</p>', $twig->loadTemplate('index')->render(array()));
     }
@@ -177,11 +183,11 @@ EOF
 
 class FooObject
 {
-    static public $called = array('__toString' => 0, 'foo' => 0, 'getFooBar' => 0);
+    public static $called = array('__toString' => 0, 'foo' => 0, 'getFooBar' => 0);
 
     public $bar = 'bar';
 
-    static public function reset()
+    public static function reset()
     {
         self::$called = array('__toString' => 0, 'foo' => 0, 'getFooBar' => 0);
     }

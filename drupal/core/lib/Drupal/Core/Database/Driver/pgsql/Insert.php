@@ -10,8 +10,6 @@ namespace Drupal\Core\Database\Driver\pgsql;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Database\Query\Insert as QueryInsert;
 
-use PDO;
-
 /**
  * @ingroup database
  * @{
@@ -39,7 +37,7 @@ class Insert extends QueryInsert {
           fwrite($blobs[$blob_count], $insert_values[$idx]);
           rewind($blobs[$blob_count]);
 
-          $stmt->bindParam(':db_insert_placeholder_' . $max_placeholder++, $blobs[$blob_count], PDO::PARAM_LOB);
+          $stmt->bindParam(':db_insert_placeholder_' . $max_placeholder++, $blobs[$blob_count], \PDO::PARAM_LOB);
 
           // Pre-increment is faster in PHP than increment.
           ++$blob_count;
@@ -59,6 +57,10 @@ class Insert extends QueryInsert {
             // if $index is 0.
             if ($index == 0) {
               $last_insert_id = $serial_value;
+            }
+            // Sequences must be greater than or equal to 1.
+            if ($serial_value === NULL || !$serial_value) {
+              $serial_value = 1;
             }
             // Set the sequence to the bigger value of either the passed
             // value or the max value of the column. It can happen that another
@@ -118,7 +120,8 @@ class Insert extends QueryInsert {
     // If we're selecting from a SelectQuery, finish building the query and
     // pass it back, as any remaining options are irrelevant.
     if (!empty($this->fromQuery)) {
-      return $comments . 'INSERT INTO {' . $this->table . '} (' . implode(', ', $insert_fields) . ') ' . $this->fromQuery;
+      $insert_fields_string = $insert_fields ? ' (' . implode(', ', $insert_fields) . ') ' : ' ';
+      return $comments . 'INSERT INTO {' . $this->table . '}' . $insert_fields_string . $this->fromQuery;
     }
 
     $query = $comments . 'INSERT INTO {' . $this->table . '} (' . implode(', ', $insert_fields) . ') VALUES ';

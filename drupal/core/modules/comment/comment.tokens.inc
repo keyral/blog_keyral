@@ -5,6 +5,9 @@
  * Builds placeholder replacement tokens for comment-related data.
  */
 
+use Drupal\Component\Utility\String;
+use Drupal\Component\Utility\Xss;
+
 /**
  * Implements hook_token_info().
  */
@@ -15,14 +18,14 @@ function comment_token_info() {
     'needs-data' => 'comment',
   );
 
-  // Comment-related tokens for nodes
-  $node['comment-count'] = array(
+  // @todo Make this work per field. See http://drupal.org/node/2031903
+  $entity['comment-count'] = array(
     'name' => t("Comment count"),
-    'description' => t("The number of comments posted on a node."),
+    'description' => t("The number of comments posted on an entity."),
   );
-  $node['comment-count-new'] = array(
+  $entity['comment-count-new'] = array(
     'name' => t("New comment count"),
-    'description' => t("The number of comments posted on a node since the reader last viewed it."),
+    'description' => t("The number of comments posted on an entity since the reader last viewed it."),
   );
 
   // Core comment tokens
@@ -79,9 +82,16 @@ function comment_token_info() {
     'description' => t("The comment's parent, if comment threading is active."),
     'type' => 'comment',
   );
+  $comment['entity'] = array(
+    'name' => t("Entity"),
+    'description' => t("The entity the comment was posted to."),
+    'type' => 'entity',
+  );
+  // Support legacy comment node tokens, since tokens are embedded in user data
+  // and can't be upgraded directly.
   $comment['node'] = array(
     'name' => t("Node"),
-    'description' => t("The node the comment was posted to."),
+    'description' => t("DEPRECATED: The node the comment was posted to."),
     'type' => 'node',
   );
   $comment['author'] = array(
@@ -93,8 +103,10 @@ function comment_token_info() {
   return array(
     'types' => array('comment' => $type),
     'tokens' => array(
-      'node' => $node,
+      'entity' => $entity,
       'comment' => $comment,
+      // Support deprecated node tokens.
+      'node' => $entity,
     ),
   );
 }
@@ -103,6 +115,8 @@ function comment_token_info() {
  * Implements hook_tokens().
  */
 function comment_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $token_service = \Drupal::token();
+
   $url_options = array('absolute' => TRUE);
   if (isset($options['langcode'])) {
     $url_options['language'] = language_load($options['langcode']);
@@ -116,124 +130,141 @@ function comment_tokens($type, $tokens, array $data = array(), array $options = 
   $replacements = array();
 
   if ($type == 'comment' && !empty($data['comment'])) {
+    /** @var \Drupal\comment\CommentInterface $comment */
     $comment = $data['comment'];
 
     foreach ($tokens as $name => $original) {
       switch ($name) {
         // Simple key values on the comment.
         case 'cid':
-          $replacements[$original] = $comment->cid;
+          $replacements[$original] = $comment->id();
           break;
 
-        // Poster identity information for comments
+        // Poster identity information for comments.
         case 'hostname':
-          $replacements[$original] = $sanitize ? check_plain($comment->hostname) : $comment->hostname;
-          break;
-
-        case 'name':
-          $name = ($comment->uid == 0) ? config('user.settings')->get('anonymous') : $comment->name;
-          $replacements[$original] = $sanitize ? filter_xss($name) : $name;
+          $replacements[$original] = $sanitize ? String::checkPlain($comment->getHostname()) : $comment->getHostname();
           break;
 
         case 'mail':
-          if ($comment->uid != 0) {
-            $account = user_load($comment->uid);
-            $mail = $account->mail;
-          }
-          else {
-            $mail = $comment->mail;
-          }
-          $replacements[$original] = $sanitize ? check_plain($mail) : $mail;
+          $mail = $comment->getAuthorEmail();
+          $replacements[$original] = $sanitize ? String::checkPlain($mail) : $mail;
           break;
 
         case 'homepage':
-          $replacements[$original] = $sanitize ? check_url($comment->homepage) : $comment->homepage;
+          $replacements[$original] = $sanitize ? check_url($comment->getHomepage()) : $comment->getHomepage();
           break;
 
         case 'title':
-          $replacements[$original] = $sanitize ? filter_xss($comment->subject) : $comment->subject;
+          $replacements[$original] = $sanitize ? Xss::filter($comment->getSubject()) : $comment->getSubject();
           break;
 
         case 'body':
-          if ($items = field_get_items('comment', $comment, 'comment_body', $langcode)) {
-            $instance = field_info_instance('comment', 'body', 'comment_body');
-            $field_langcode = field_language('comment', $comment, 'comment_body', $langcode);
-            $replacements[$original] = $sanitize ? _text_sanitize($instance, $field_langcode, $items[0], 'value') : $items[0]['value'];
-          }
+          $replacements[$original] = $sanitize ? $comment->comment_body->processed : $comment->comment_body->value;
           break;
 
         // Comment related URLs.
         case 'url':
-          $url_options['fragment']  = 'comment-' . $comment->cid;
-          $replacements[$original] = url('comment/' . $comment->cid, $url_options);
+          $url_options['fragment']  = 'comment-' . $comment->id();
+          $replacements[$original] = url('comment/' . $comment->id(), $url_options);
           break;
 
         case 'edit-url':
           $url_options['fragment'] = NULL;
-          $replacements[$original] = url('comment/' . $comment->cid . '/edit', $url_options);
+          $replacements[$original] = url('comment/' . $comment->id() . '/edit', $url_options);
           break;
 
-        // Default values for the chained tokens handled below.
+        // @todo Remove 'name' token in favour of 'author'. See
+        //   https://drupal.org/node/920056.
+        case 'name':
         case 'author':
-          $replacements[$original] = $sanitize ? filter_xss($comment->name) : $comment->name;
+          $name = $comment->getAuthorName();
+          $replacements[$original] = $sanitize ? Xss::filter($name) : $name;
           break;
 
         case 'parent':
-          if (!empty($comment->pid)) {
-            $parent = comment_load($comment->pid);
-            $replacements[$original] = $sanitize ? filter_xss($parent->subject) : $parent->subject;
+          if ($comment->hasParentComment()) {
+            $parent = $comment->getParentComment();
+            $replacements[$original] = $sanitize ? Xss::filter($parent->getSubject()) : $parent->getSubject();
           }
           break;
 
         case 'created':
-          $replacements[$original] = format_date($comment->created, 'medium', '', NULL, $langcode);
+          $replacements[$original] = format_date($comment->getCreatedTime(), 'medium', '', NULL, $langcode);
           break;
 
         case 'changed':
-          $replacements[$original] = format_date($comment->changed, 'medium', '', NULL, $langcode);
+          $replacements[$original] = format_date($comment->getChangedTime(), 'medium', '', NULL, $langcode);
+          break;
+
+        case 'entity':
+          $entity = $comment->getCommentedEntity();
+          $title = $entity->label();
+          $replacements[$original] = $sanitize ? Xss::filter($title) : $title;
           break;
 
         case 'node':
-          $node = node_load($comment->nid);
-          $title = $node->label();
-          $replacements[$original] = $sanitize ? filter_xss($title) : $title;
+          // Support legacy comment node tokens, since tokens are embedded in
+          // user data and can't be upgraded directly.
+          // @todo Remove in Drupal 9, see https://drupal.org/node/2031901.
+          if ($comment->getCommentedEntityTypeId() == 'node') {
+            $entity = $comment->getCommentedEntity();
+            $title = $entity->label();
+            $replacements[$original] = $sanitize ? Xss::filter($title) : $title;
+          }
+          else {
+            $replacements[$original] = NULL;
+          }
           break;
       }
     }
 
     // Chained token relationships.
-    if ($node_tokens = token_find_with_prefix($tokens, 'node')) {
-      $node = node_load($comment->nid);
-      $replacements += token_generate('node', $node_tokens, array('node' => $node), $options);
+    if ($entity_tokens = $token_service->findwithPrefix($tokens, 'entity')) {
+      $entity = $comment->getCommentedEntity();
+      $replacements += $token_service->generate($comment->getCommentedEntityTypeId(), $entity_tokens, array($comment->getCommentedEntityTypeId() => $entity), $options);
     }
 
-    if ($date_tokens = token_find_with_prefix($tokens, 'created')) {
-      $replacements += token_generate('date', $date_tokens, array('date' => $comment->created), $options);
+    if (($node_tokens = $token_service->findwithPrefix($tokens, 'node')) && $comment->getCommentedEntityTypeId() == 'node') {
+      $node = $comment->getCommentedEntity();
+      $replacements += $token_service->generate('node', $node_tokens, array('node' => $node), $options);
     }
 
-    if ($date_tokens = token_find_with_prefix($tokens, 'changed')) {
-      $replacements += token_generate('date', $date_tokens, array('date' => $comment->changed), $options);
+    if ($date_tokens = $token_service->findwithPrefix($tokens, 'created')) {
+      $replacements += $token_service->generate('date', $date_tokens, array('date' => $comment->getCreatedTime()), $options);
     }
 
-    if (($parent_tokens = token_find_with_prefix($tokens, 'parent')) && $parent = comment_load($comment->pid)) {
-      $replacements += token_generate('comment', $parent_tokens, array('comment' => $parent), $options);
+    if ($date_tokens = $token_service->findwithPrefix($tokens, 'changed')) {
+      $replacements += $token_service->generate('date', $date_tokens, array('date' => $comment->getChangedTime()), $options);
     }
 
-    if (($author_tokens = token_find_with_prefix($tokens, 'author')) && $account = user_load($comment->uid)) {
-      $replacements += token_generate('user', $author_tokens, array('user' => $account), $options);
+    if (($parent_tokens = $token_service->findwithPrefix($tokens, 'parent')) && $parent = $comment->getParentComment()) {
+      $replacements += $token_service->generate('comment', $parent_tokens, array('comment' => $parent), $options);
+    }
+
+    if (($author_tokens = $token_service->findwithPrefix($tokens, 'author')) && $account = $comment->getOwner()) {
+      $replacements += $token_service->generate('user', $author_tokens, array('user' => $account), $options);
     }
   }
-  elseif ($type == 'node' & !empty($data['node'])) {
-    $node = $data['node'];
+  elseif (($type == 'entity' & !empty($data['entity'])) ||
+    ($type == 'node' & !empty($data['node']))) {
+    /** @var $entity \Drupal\Core\Entity\ContentEntityInterface */
+    $entity = !empty($data['entity']) ? $data['entity'] : $data['node'];
 
     foreach ($tokens as $name => $original) {
-      switch($name) {
+      switch ($name) {
         case 'comment-count':
-          $replacements[$original] = $node->comment_count;
+          $count = 0;
+          $fields = array_keys(\Drupal::service('comment.manager')->getFields($entity->getEntityTypeId()));
+          $definitions = array_keys($entity->getFieldDefinitions());
+          $valid_fields = array_intersect($fields, $definitions);
+          foreach ($valid_fields as $field_name) {
+            $count += $entity->get($field_name)->comment_count;
+          }
+          $replacements[$original] = $count;
           break;
 
         case 'comment-count-new':
-          $replacements[$original] = comment_num_new($node->nid);
+          $replacements[$original] = \Drupal::service('comment.manager')->getCountNewComments($entity);
           break;
       }
     }

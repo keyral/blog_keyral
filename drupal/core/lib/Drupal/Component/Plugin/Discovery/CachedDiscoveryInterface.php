@@ -13,7 +13,11 @@ namespace Drupal\Component\Plugin\Discovery;
 interface CachedDiscoveryInterface extends DiscoveryInterface {
 
   /**
-   * Clears cached plugin definitions.
+   * Clears static and persistent plugin definition caches.
+   *
+   * Don't resort to calling \Drupal::cache()->delete() and friends to make
+   * Drupal detect new or updated plugin definitions. Always use this method on
+   * the appropriate plugin type's plugin manager!
    */
   public function clearCachedDefinitions();
 

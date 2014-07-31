@@ -76,19 +76,31 @@ class PHPTransliteration implements TransliterationInterface {
   }
 
   /**
-   * Implements TransliterationInterface::transliterate().
+   * {@inheritdoc}
    */
-  public function transliterate($string, $langcode = 'en', $unknown_character = '?') {
+  public function transliterate($string, $langcode = 'en', $unknown_character = '?', $max_length = NULL) {
     $result = '';
+    $length = 0;
     // Split into Unicode characters and transliterate each one.
     foreach (preg_split('//u', $string, 0, PREG_SPLIT_NO_EMPTY) as $character) {
       $code = self::ordUTF8($character);
       if ($code == -1) {
-        $result .= $unknown_character;
+        $to_add = $unknown_character;
       }
       else {
-        $result .= $this->replace($code, $langcode, $unknown_character);
+        $to_add = $this->replace($code, $langcode, $unknown_character);
       }
+
+      // Check if this exceeds the maximum allowed length.
+      if (isset($max_length)) {
+        $length += strlen($to_add);
+        if ($length > $max_length) {
+          // There is no more space.
+          return $result;
+        }
+      }
+
+      $result .= $to_add;
     }
 
     return $result;
@@ -172,7 +184,8 @@ class PHPTransliteration implements TransliterationInterface {
    * PHPTransliteration::$dataDirectory. These files should set up an array
    * variable $overrides with an element whose key is $langcode and whose value
    * is an array whose keys are character codes, and whose values are their
-   * transliterations in this language.
+   * transliterations in this language. The character codes can be for any valid
+   * Unicode character, independent of the number of bytes.
    *
    * @param $langcode
    *   Code for the language to read.
@@ -200,7 +213,8 @@ class PHPTransliteration implements TransliterationInterface {
    * hexidecimal notation) in PHPTransliteration::$dataDirectory. These files
    * should set up a variable $bank containing an array whose numerical indices
    * are the remaining two bytes of the character code, and whose values are the
-   * transliterations of these characters into US-ASCII.
+   * transliterations of these characters into US-ASCII. Note that the maximum
+   * Unicode character that can be encoded in this way is 4 bytes.
    *
    * @param $bank
    *   First two bytes of the Unicode character, or 0 for the ASCII range.

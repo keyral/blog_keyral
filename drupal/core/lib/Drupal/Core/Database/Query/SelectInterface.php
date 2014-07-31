@@ -9,6 +9,8 @@ namespace Drupal\Core\Database\Query;
 
 /**
  * Interface definition for a Select Query object.
+ *
+ * @ingroup database
  */
 interface SelectInterface extends ConditionInterface, AlterableInterface, ExtendableInterface, PlaceholderInterface {
 
@@ -142,7 +144,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *
    * @param $distinct
    *   TRUE to flag this query DISTINCT, FALSE to disable it.
-   * @return SelectQueryInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function distinct($distinct = TRUE);
@@ -184,7 +186,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *   An indexed array of fields present in the specified table that should be
    *   included in this query. If not specified, $table_alias.* will be generated
    *   without any aliases.
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function fields($table_alias, array $fields = array());
@@ -216,7 +218,10 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * This method is a convenience method for innerJoin().
    *
    * @param $table
-   *   The table against which to join.
+   *   The table against which to join. May be a string or another SelectQuery
+   *   object. If a query object is passed, it will be used as a subselect.
+   *   Unless the table name starts with the database / schema name and a dot
+   *   it will be prefixed.
    * @param $alias
    *   The alias for the table. In most cases this should be the first letter
    *   of the table, or the first letter of each "word" in the table.
@@ -239,7 +244,10 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * Inner Join against another table in the database.
    *
    * @param $table
-   *   The table against which to join.
+   *   The table against which to join. May be a string or another SelectQuery
+   *   object. If a query object is passed, it will be used as a subselect.
+   *   Unless the table name starts with the database / schema name and a dot
+   *   it will be prefixed.
    * @param $alias
    *   The alias for the table. In most cases this should be the first letter
    *   of the table, or the first letter of each "word" in the table.
@@ -262,7 +270,10 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * Left Outer Join against another table in the database.
    *
    * @param $table
-   *   The table against which to join.
+   *   The table against which to join. May be a string or another SelectQuery
+   *   object. If a query object is passed, it will be used as a subselect.
+   *   Unless the table name starts with the database / schema name and a dot
+   *   it will be prefixed.
    * @param $alias
    *   The alias for the table. In most cases this should be the first letter
    *   of the table, or the first letter of each "word" in the table.
@@ -285,7 +296,10 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * Right Outer Join against another table in the database.
    *
    * @param $table
-   *   The table against which to join.
+   *   The table against which to join. May be a string or another SelectQuery
+   *   object. If a query object is passed, it will be used as a subselect.
+   *   Unless the table name starts with the database / schema name and a dot
+   *   it will be prefixed.
    * @param $alias
    *   The alias for the table. In most cases this should be the first letter
    *   of the table, or the first letter of each "word" in the table.
@@ -316,6 +330,8 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * @param $table
    *   The table against which to join. May be a string or another SelectQuery
    *   object. If a query object is passed, it will be used as a subselect.
+   *   Unless the table name starts with the database / schema name and a dot
+   *   it will be prefixed.
    * @param $alias
    *   The alias for the table. In most cases this should be the first letter
    *   of the table, or the first letter of each "word" in the table. If omitted,
@@ -349,10 +365,20 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * called.
    *
    * @param $field
-   *   The field on which to order.
+   *   The field on which to order. The field is escaped for security so only
+   *   valid field and alias names are possible. To order by an expression, add
+   *   the expression with addExpression() first and then use the alias to order
+   *   on.
+   *
+   *   Example:
+   *   <code>
+   *   $query->addExpression('SUBSTRING(thread, 1, (LENGTH(thread) - 1))', 'order_field');
+   *   $query->orderBy('order_field', 'ASC');
+   *   </code>
    * @param $direction
-   *   The direction to sort. Legal values are "ASC" and "DESC".
-   * @return Drupal\Core\Database\Query\SelectInterface
+   *   The direction to sort. Legal values are "ASC" and "DESC". Any other value
+   *   will be converted to "ASC".
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function orderBy($field, $direction = 'ASC');
@@ -374,7 +400,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *
    * for an example of such an alternate sorting mechanism.
    *
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object
    */
   public function orderRandom();
@@ -390,7 +416,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *   range directives that are set.
    * @param $length
    *   The number of records to return from the result set.
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function range($start = NULL, $length = NULL);
@@ -415,7 +441,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * @param $type
    *   The type of UNION to add to the query. Defaults to plain
    *   UNION.
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function union(SelectInterface $query, $type = '');
@@ -425,7 +451,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *
    * @param $field
    *   The field on which to group. This should be the field as aliased.
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   The called object.
    */
   public function groupBy($field);
@@ -433,7 +459,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
   /**
    * Get the equivalent COUNT query of this query as a new query object.
    *
-   * @return Drupal\Core\Database\Query\SelectInterface
+   * @return \Drupal\Core\Database\Query\SelectInterface
    *   A new SelectQuery object with no fields or expressions besides COUNT(*).
    */
   public function countQuery();
@@ -455,6 +481,14 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
   public function preExecute(SelectInterface $query = NULL);
 
   /**
+   * Runs the query against the database.
+   *
+   * @return \Drupal\Core\Database\StatementInterface|null
+   *   A prepared statement, or NULL if the query is not valid.
+   */
+  public function execute();
+
+  /**
    * Helper function to build most common HAVING conditional clauses.
    *
    * This method can take a variable number of parameters. If called with two
@@ -472,7 +506,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    *   The comparison operator, such as =, <, or >=. It also accepts more complex
    *   options such as IN, LIKE, or BETWEEN. Defaults to IN if $value is an array
    *   = otherwise.
-   * @return Drupal\Core\Database\Query\ConditionInterface
+   * @return \Drupal\Core\Database\Query\ConditionInterface
    *   The called object.
    */
   public function havingCondition($field, $value = NULL, $operator = NULL);
@@ -497,7 +531,7 @@ interface SelectInterface extends ConditionInterface, AlterableInterface, Extend
    * @param $set
    *   IF TRUE, FOR UPDATE will be added to the query, if FALSE then it won't.
    *
-   * @return Drupal\Core\Database\Query\ConditionInterface
+   * @return \Drupal\Core\Database\Query\ConditionInterface
    *   The called object.
    */
   public function forUpdate($set = TRUE);

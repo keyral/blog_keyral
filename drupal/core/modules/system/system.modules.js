@@ -1,67 +1,75 @@
 (function ($, Drupal) {
 
-"use strict";
+  "use strict";
 
-$.extend(Drupal.settings, {
-  hideModules: {
-    method: 'toggle',
-    duration: 0
-  }
-});
+  /**
+   * Filters the module list table by a text input search string.
+   *
+   * Additionally accounts for multiple tables being wrapped in "package" details
+   * elements.
+   *
+   * Text search input: input.table-filter-text
+   * Target table:      input.table-filter-text[data-table]
+   * Source text:       .table-filter-text-source
+   */
+  Drupal.behaviors.tableFilterByText = {
+    attach: function (context, settings) {
+      var $input = $('input.table-filter-text').once('table-filter-text');
+      var $table = $($input.attr('data-table'));
+      var $rowsAndDetails, $rows, $details;
+      var searching = false;
 
-/**
- * Show/hide the requirements information on modules page.
- */
-Drupal.behaviors.hideModuleInformation = {
-  attach: function (context, settings) {
-    var $table = $('#system-modules').once('expand-modules');
-    var effect = settings.hideModules;
-    if ($table.length) {
-      var $tbodies = $table.find('tbody');
+      function hidePackageDetails(index, element) {
+        var $packDetails = $(element);
+        var $visibleRows = $packDetails.find('table:not(.sticky-header)').find('tbody tr:visible');
+        $packDetails.toggle($visibleRows.length > 0);
+      }
 
-      // Fancy animating.
-      $tbodies.on('click keydown', '.description', function (e) {
-        if (e.keyCode && (e.keyCode !== 13 && e.keyCode !== 32)) {
-          return;
+      function filterModuleList(e) {
+        var query = $(e.target).val().toLowerCase();
+
+        function showModuleRow(index, row) {
+          var $row = $(row);
+          var $sources = $row.find('.table-filter-text-source');
+          var textMatch = $sources.text().toLowerCase().indexOf(query) !== -1;
+          $row.closest('tr').toggle(textMatch);
         }
-        e.preventDefault();
-        var $tr = $(this).closest('tr');
-        var $toggleElements = $tr.find('.requirements, .links');
+        // Search over all rows and packages.
+        $rowsAndDetails.show();
 
-        $toggleElements[effect.method](effect.duration)
-          .promise().done(function() {
-            $tr.toggleClass('expanded');
-          });
+        // Filter if the length of the query is at least 2 characters.
+        if (query.length >= 2) {
+          searching = true;
+          $rows.each(showModuleRow);
 
-        // Change screen reader text.
-        $tr.find('.module-description-prefix').text(function () {
-          if ($tr.hasClass('expanded')) {
-            return Drupal.t('Hide description');
-          }
-          else {
-            return Drupal.t('Show description');
-          }
-        });
-      });
-      // Makes the whole cell a click target.
-      $tbodies.on('click', 'td.checkbox', function (e) {
-        e.stopPropagation();
-        var input = $(this).find('input').get(0);
-        if (!input.readOnly && !input.disabled) {
-          input.checked = !input.checked;
+          // Note that we first open all <details> to be able to use ':visible'.
+          // Mark the <details> elements that were closed before filtering, so
+          // they can be reclosed when filtering is removed.
+          $details.not('[open]').attr('data-drupal-system-state', 'forced-open');
+
+          // Hide the package <details> if they don't have any visible rows.
+          // Note that we first show() all <details> to be able to use ':visible'.
+          $details.attr('open', true).each(hidePackageDetails);
         }
-      });
-      // Catch the event on the checkbox to avoid triggering previous handler.
-      $tbodies.on('click', 'input', function (e) {
-        e.stopPropagation();
-      });
-      // Don't close the row when clicking a link in the description.
-      $tbodies.on('click', '.description a', function (e) {
-        e.stopPropagation();
-      });
+        else if (searching) {
+          searching = false;
+          $rowsAndDetails.show();
+          // Return <details> elements that had been closed before filtering
+          // to a closed state.
+          $details.filter('[data-drupal-system-state="forced-open"]')
+            .removeAttr('data-drupal-system-state')
+            .attr('open', false);
+        }
+      }
+
+      if ($table.length) {
+        $rowsAndDetails = $table.find('tr, details');
+        $rows = $table.find('tbody tr');
+        $details = $rowsAndDetails.filter('.package-listing');
+
+        $input.on('keyup', filterModuleList);
+      }
     }
-    $table.find('.requirements, .links').hide();
-  }
-};
+  };
 
 }(jQuery, Drupal));

@@ -2,31 +2,17 @@
 
 /**
  * @file
- * Definition of Drupal\Core\Entity\EntityInterface.
+ * Contains \Drupal\Core\Entity\EntityInterface.
  */
 
 namespace Drupal\Core\Entity;
 
-use Drupal\Core\TypedData\AccessibleInterface;
-use Drupal\Core\TypedData\ComplexDataInterface;
-use Drupal\Core\TypedData\TranslatableInterface;
+use Drupal\Core\Access\AccessibleInterface;
 
 /**
  * Defines a common interface for all entity objects.
- *
- * When implementing this interface which extends Traversable, make sure to list
- * IteratorAggregate or Iterator before this interface in the implements clause.
  */
-interface EntityInterface extends ComplexDataInterface, AccessibleInterface, TranslatableInterface {
-
-  /**
-   * Returns the entity identifier (the entity's machine name or numeric ID).
-   *
-   * @return
-   *   The identifier of the entity, or NULL if the entity does not yet have
-   *   an identifier.
-   */
-  public function id();
+interface EntityInterface extends AccessibleInterface {
 
   /**
    * Returns the entity UUID (Universally Unique Identifier).
@@ -34,10 +20,27 @@ interface EntityInterface extends ComplexDataInterface, AccessibleInterface, Tra
    * The UUID is guaranteed to be unique and can be used to identify an entity
    * across multiple systems.
    *
-   * @return string
+   * @return string|null
    *   The UUID of the entity, or NULL if the entity does not have one.
    */
   public function uuid();
+
+  /**
+   * Returns the identifier.
+   *
+   * @return string|int|null
+   *   The entity identifier, or NULL if the object does not yet have an
+   *   identifier.
+   */
+  public function id();
+
+  /**
+   * Returns the language of the entity.
+   *
+   * @return \Drupal\Core\Language\LanguageInterface
+   *   The language object.
+   */
+  public function language();
 
   /**
    * Returns whether the entity is new.
@@ -45,32 +48,12 @@ interface EntityInterface extends ComplexDataInterface, AccessibleInterface, Tra
    * Usually an entity is new if no ID exists for it yet. However, entities may
    * be enforced to be new with existing IDs too.
    *
-   * @return
+   * @return bool
    *   TRUE if the entity is new, or FALSE if the entity has already been saved.
    *
-   * @see Drupal\Core\Entity\EntityInterface::enforceIsNew()
+   * @see \Drupal\Core\Entity\EntityInterface::enforceIsNew()
    */
   public function isNew();
-
-  /**
-   * Returns whether a new revision should be created on save.
-   *
-   * @return bool
-   *   TRUE if a new revision should be created.
-   *
-   * @see Drupal\Core\Entity\EntityInterface::setNewRevision()
-   */
-  public function isNewRevision();
-
-  /**
-   * Enforces an entity to be saved as a new revision.
-   *
-   * @param bool $value
-   *   (optional) Whether a new revision should be saved.
-   *
-   * @see Drupal\Core\Entity\EntityInterface::isNewRevision()
-   */
-  public function setNewRevision($value = TRUE);
 
   /**
    * Enforces an entity to be new.
@@ -82,57 +65,156 @@ interface EntityInterface extends ComplexDataInterface, AccessibleInterface, Tra
    *   (optional) Whether the entity should be forced to be new. Defaults to
    *   TRUE.
    *
-   * @see Drupal\Core\Entity\EntityInterface::isNew()
+   * @return $this
+   *
+   * @see \Drupal\Core\Entity\EntityInterface::isNew()
    */
   public function enforceIsNew($value = TRUE);
 
   /**
-   * Returns the type of the entity.
+   * Returns the ID of the type of the entity.
    *
-   * @return
-   *   The type of the entity.
+   * @return string
+   *   The entity type ID.
    */
-  public function entityType();
+  public function getEntityTypeId();
 
   /**
    * Returns the bundle of the entity.
    *
-   * @return
-   *   The bundle of the entity. Defaults to the entity type if the entity type
-   *   does not make use of different bundles.
+   * @return string
+   *   The bundle of the entity. Defaults to the entity type ID if the entity
+   *   type does not make use of different bundles.
    */
   public function bundle();
 
   /**
    * Returns the label of the entity.
    *
-   * @param $langcode
-   *   (optional) The language code of the language that should be used for
-   *   getting the label. If set to NULL, the entity's default language is
-   *   used.
-   *
-   * @return
+   * @return string|null
    *   The label of the entity, or NULL if there is no label defined.
    */
-  public function label($langcode = NULL);
+  public function label();
 
   /**
    * Returns the URI elements of the entity.
    *
-   * @return
-   *   An array containing the 'path' and 'options' keys used to build the URI
-   *   of the entity, and matching the signature of url(). NULL if the entity
-   *   has no URI of its own.
+   * URI templates might be set in the links array in an annotation, for
+   * example:
+   * @code
+   * links = {
+   *   "canonical" = "node.view",
+   *   "edit-form" = "node.page_edit",
+   *   "version-history" = "node.revision_overview"
+   * }
+   * @endcode
+   * or specified in a callback function set like:
+   * @code
+   * uri_callback = "comment_uri",
+   * @endcode
+   * If the path is not set in the links array, the uri_callback function is
+   * used for setting the path. If this does not exist and the link relationship
+   * type is canonical, the path is set using the default template:
+   * entity/entityType/id.
+   *
+   * @param string $rel
+   *   The link relationship type, for example: canonical or edit-form.
+   *
+   * @return \Drupal\Core\Url
    */
-  public function uri();
+  public function urlInfo($rel = 'canonical');
+
+  /**
+   * Returns the public URL for this entity.
+   *
+   * @param string $rel
+   *   The link relationship type, for example: canonical or edit-form.
+   * @param array $options
+   *   See \Drupal\Core\Routing\UrlGeneratorInterface::generateFromRoute() for
+   *   the available options.
+   *
+   * @return string
+   *   The URL for this entity.
+   */
+  public function url($rel = 'canonical', $options = array());
+
+  /**
+   * Returns the internal path for this entity.
+   *
+   * self::url() will return the full path including any prefixes, fragments, or
+   * query strings. This path does not include those.
+   *
+   * @param string $rel
+   *   The link relationship type, for example: canonical or edit-form.
+   *
+   * @return string
+   *   The internal path for this entity.
+   */
+  public function getSystemPath($rel = 'canonical');
+
+  /**
+   * Indicates if a link template exists for a given key.
+   *
+   * @param string $key
+   *   The link type.
+   *
+   * @return bool
+   *   TRUE if the link template exists, FALSE otherwise.
+   */
+  public function hasLinkTemplate($key);
+
+  /**
+   * Returns a list of URI relationships supported by this entity.
+   *
+   * @return string[]
+   *   An array of link relationships supported by this entity.
+   */
+  public function uriRelationships();
+
+  /**
+   * Loads an entity.
+   *
+   * @param mixed $id
+   *   The id of the entity to load.
+   *
+   * @return static
+   *   The entity object or NULL if there is no entity with the given ID.
+   */
+  public static function load($id);
+
+  /**
+   * Loads one or more entities.
+   *
+   * @param array $ids
+   *   An array of entity IDs, or NULL to load all entities.
+   *
+   * @return static[]
+   *   An array of entity objects indexed by their IDs.
+   */
+  public static function loadMultiple(array $ids = NULL);
+
+  /**
+   * Constructs a new entity object, without permanently saving it.
+   *
+   * @param array $values
+   *   (optional) An array of values to set, keyed by property name. If the
+   *   entity type has bundles, the bundle key has to be specified.
+   *
+   * @return static
+   *   The entity object.
+   */
+  public static function create(array $values = array());
 
   /**
    * Saves an entity permanently.
    *
-   * @return
+   * When saving existing entities, the entity is assumed to be complete,
+   * partial updates of entities are not supported.
+   *
+   * @return int
    *   Either SAVED_NEW or SAVED_UPDATED, depending on the operation performed.
    *
-   * @throws Drupal\Core\Entity\EntityStorageException
+   * @throws \Drupal\Core\Entity\EntityStorageException
    *   In case of failures an exception is thrown.
    */
   public function save();
@@ -140,45 +222,159 @@ interface EntityInterface extends ComplexDataInterface, AccessibleInterface, Tra
   /**
    * Deletes an entity permanently.
    *
-   * @throws Drupal\Core\Entity\EntityStorageException
+   * @throws \Drupal\Core\Entity\EntityStorageException
    *   In case of failures an exception is thrown.
    */
   public function delete();
 
   /**
+   * Acts on an entity before the presave hook is invoked.
+   *
+   * Used before the entity is saved and before invoking the presave hook.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   */
+  public function preSave(EntityStorageInterface $storage);
+
+  /**
+   * Acts on a saved entity before the insert or update hook is invoked.
+   *
+   * Used after the entity is saved, but before invoking the insert or update
+   * hook.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   * @param bool $update
+   *   TRUE if the entity has been updated, or FALSE if it has been inserted.
+   */
+  public function postSave(EntityStorageInterface $storage, $update = TRUE);
+
+  /**
+   * Changes the values of an entity before it is created.
+   *
+   * Load defaults for example.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   * @param mixed[] $values
+   *   An array of values to set, keyed by property name. If the entity type has
+   *   bundles the bundle key has to be specified.
+   */
+  public static function preCreate(EntityStorageInterface $storage, array &$values);
+
+  /**
+   * Acts on an entity after it is created but before hooks are invoked.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   */
+  public function postCreate(EntityStorageInterface $storage);
+
+  /**
+   * Acts on entities before they are deleted and before hooks are invoked.
+   *
+   * Used before the entities are deleted and before invoking the delete hook.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   * @param \Drupal\Core\Entity\EntityInterface[] $entities
+   *   An array of entities.
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities);
+
+  /**
+   * Acts on deleted entities before the delete hook is invoked.
+   *
+   * Used after the entities are deleted but before invoking the delete hook.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   * @param \Drupal\Core\Entity\EntityInterface[] $entities
+   *   An array of entities.
+   */
+  public static function postDelete(EntityStorageInterface $storage, array $entities);
+
+  /**
+   * Acts on loaded entities.
+   *
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
+   *   The entity storage object.
+   * @param \Drupal\Core\Entity\EntityInterface[] $entities
+   *   An array of entities.
+   */
+  public static function postLoad(EntityStorageInterface $storage, array &$entities);
+
+  /**
    * Creates a duplicate of the entity.
    *
-   * @return Drupal\Core\Entity\EntityInterface
-   *   A clone of the current entity with all identifiers unset, so saving
-   *   it inserts a new entity into the storage system.
+   * @return static
+   *   A clone of $this with all identifiers unset, so saving it inserts a new
+   *   entity into the storage system.
    */
   public function createDuplicate();
 
   /**
-   * Returns the info of the type of the entity.
+   * Returns the entity type definition.
    *
-   * @see entity_get_info()
+   * @return \Drupal\Core\Entity\EntityTypeInterface
+   *   The entity type definition.
    */
-  public function entityInfo();
+  public function getEntityType();
 
   /**
-   * Returns the revision identifier of the entity.
+   * Returns a list of entities referenced by this entity.
    *
-   * @return
-   *   The revision identifier of the entity, or NULL if the entity does not
-   *   have a revision identifier.
+   * @return \Drupal\Core\Entity\EntityInterface[]
+   *   An array of entities.
    */
-  public function getRevisionId();
+  public function referencedEntities();
 
   /**
-   * Checks if this entity is the default revision.
+   * Returns the original ID.
    *
-   * @param bool $new_value
-   *   (optional) A Boolean to (re)set the isDefaultRevision flag.
-   *
-   * @return bool
-   *   TRUE if the entity is the default revision, FALSE otherwise. If
-   *   $new_value was passed, the previous value is returned.
+   * @return int|string|null
+   *   The original ID, or NULL if no ID was set or for entity types that do not
+   *   support renames.
    */
-  public function isDefaultRevision($new_value = NULL);
+  public function getOriginalId();
+
+  /**
+   * Sets the original ID.
+   *
+   * @param int|string|null $id
+   *   The new ID to set as original ID. If the entity supports renames, setting
+   *   NULL will prevent an update from being considered a rename.
+   *
+   * @return $this
+   */
+  public function setOriginalId($id);
+
+  /**
+   * Returns an array of all property values.
+   *
+   * @return mixed[]
+   *   An array of property values, keyed by property name.
+   */
+  public function toArray();
+
+  /**
+   * The unique cache tag associated with this entity.
+   *
+   * @return array
+   *   An array of cache tags.
+   */
+  public function getCacheTag();
+
+  /**
+   * The list cache tags associated with this entity.
+   *
+   * Enables code listing entities of this type to ensure that newly created
+   * entities show up immediately.
+   *
+   * @return array
+   *   An array of cache tags.
+   */
+  public function getListCacheTags();
+
 }

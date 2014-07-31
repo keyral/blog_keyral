@@ -7,6 +7,9 @@
 
 namespace Drupal\Core\Password;
 
+use Drupal\Component\Utility\Crypt;
+use Drupal\user\UserInterface;
+
 /**
  * Secure password hashing functions based on the Portable PHP password
  * hashing framework.
@@ -56,7 +59,7 @@ class PhpassHashedPassword implements PasswordInterface {
   }
 
   /**
-   * Encode bytes into printable base 64 using the *nix standard from crypt().
+   * Encodes bytes into printable base 64 using the *nix standard from crypt().
    *
    * @param String $input
    *   The string containing bytes to encode.
@@ -109,7 +112,7 @@ class PhpassHashedPassword implements PasswordInterface {
     // We encode the final log2 iteration count in base 64.
     $output .= static::$ITOA64[$this->countLog2];
     // 6 bytes is the standard salt for a portable phpass hash.
-    $output .= $this->base64Encode(drupal_random_bytes(6), 6);
+    $output .= $this->base64Encode(Crypt::randomBytes(6), 6);
     return $output;
   }
 
@@ -163,8 +166,8 @@ class PhpassHashedPassword implements PasswordInterface {
     }
     $count_log2 = $this->getCountLog2($setting);
     // Stored hashes may have been crypted with any iteration count. However we
-    // do not allow applying the algorithm for unreasonable low and heigh
-    // values respectively.
+    // do not allow applying the algorithm for unreasonable low and high values
+    // respectively.
     if ($count_log2 != $this->enforceLog2Boundaries($count_log2)) {
       return FALSE;
     }
@@ -212,16 +215,16 @@ class PhpassHashedPassword implements PasswordInterface {
   /**
    * Implements Drupal\Core\Password\PasswordInterface::checkPassword().
    */
-  public function check($password, $account) {
-    if (substr($account->pass, 0, 2) == 'U$') {
+  public function check($password, UserInterface $account) {
+    if (substr($account->getPassword(), 0, 2) == 'U$') {
       // This may be an updated password from user_update_7000(). Such hashes
       // have 'U' added as the first character and need an extra md5() (see the
       // Drupal 7 documentation).
-      $stored_hash = substr($account->pass, 1);
+      $stored_hash = substr($account->getPassword(), 1);
       $password = md5($password);
     }
     else {
-      $stored_hash = $account->pass;
+      $stored_hash = $account->getPassword();
     }
 
     $type = substr($stored_hash, 0, 3);
@@ -246,14 +249,14 @@ class PhpassHashedPassword implements PasswordInterface {
   /**
    * Implements Drupal\Core\Password\PasswordInterface::userNeedsNewHash().
    */
-  public function userNeedsNewHash($account) {
+  public function userNeedsNewHash(UserInterface $account) {
     // Check whether this was an updated password.
-    if ((substr($account->pass, 0, 3) != '$S$') || (strlen($account->pass) != static::HASH_LENGTH)) {
+    if ((substr($account->getPassword(), 0, 3) != '$S$') || (strlen($account->getPassword()) != static::HASH_LENGTH)) {
       return TRUE;
     }
     // Ensure that $count_log2 is within set bounds.
     $count_log2 = $this->enforceLog2Boundaries($this->countLog2);
     // Check whether the iteration count used differs from the standard number.
-    return ($this->getCountLog2($account->pass) !== $count_log2);
+    return ($this->getCountLog2($account->getPassword()) !== $count_log2);
   }
 }

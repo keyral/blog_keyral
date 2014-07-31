@@ -8,7 +8,7 @@
 namespace Drupal\Core\Config;
 
 /**
- * Defines a stub storage controller.
+ * Defines a stub storage.
  *
  * This storage is always empty; the controller reads and writes nothing.
  *
@@ -34,6 +34,13 @@ class NullStorage implements StorageInterface {
    * Implements Drupal\Core\Config\StorageInterface::read().
    */
   public function read($name) {
+    return array();
+  }
+
+  /**
+   * Implements Drupal\Core\Config\StorageInterface::readMultiple().
+   */
+  public function readMultiple(array $names) {
     return array();
   }
 
@@ -78,4 +85,33 @@ class NullStorage implements StorageInterface {
   public function listAll($prefix = '') {
     return array();
   }
+
+  /**
+   * Implements Drupal\Core\Config\StorageInterface::deleteAll().
+   */
+  public function deleteAll($prefix = '') {
+    return FALSE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function createCollection($collection) {
+    // No op.
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getAllCollectionNames() {
+    return array();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCollectionName() {
+    return '';
+  }
+
 }

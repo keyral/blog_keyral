@@ -11,6 +11,9 @@
  * This version is made available under the GNU GPL License
  */
 
+use Drupal\Component\Utility\String;
+use GuzzleHttp\Exception\RequestException;
+
 /**
  * Turns a data structure into objects with 'data' and 'type' attributes.
  *
@@ -120,7 +123,7 @@ function xmlrpc_value_get_xml($xmlrpc_value) {
     case 'struct':
       $return = '<struct>' . "\n";
       foreach ($xmlrpc_value->data as $name => $value) {
-        $return .= "  <member><name>" . check_plain($name) . "</name><value>";
+        $return .= "  <member><name>" . String::checkPlain($name) . "</name><value>";
         $return .= xmlrpc_value_get_xml($value) . "</value></member>\n";
       }
       $return .= '</struct>';
@@ -526,15 +529,15 @@ function xmlrpc_base64_get_xml($xmlrpc_base64) {
 /**
  * Performs one or more XML-RPC requests.
  *
- * @param $url
+ * @param string $url
  *   An absolute URL of the XML-RPC endpoint, e.g.,
  *   http://example.com/xmlrpc.php
- * @param $args
+ * @param array $args
  *   An associative array whose keys are the methods to call and whose values
  *   are the arguments to pass to the respective method. If multiple methods
  *   are specified, a system.multicall is performed.
- * @param $options
- *   (optional) An array of options to pass along to drupal_http_request().
+ * @param array $headers
+ *   (optional) An array of HTTP headers to pass along.
  *
  * @return
  *   A single response (single request) or an array of responses (multicall
@@ -543,7 +546,7 @@ function xmlrpc_base64_get_xml($xmlrpc_base64) {
  *   is returned, see xmlrpc_errno() and xmlrpc_error_msg() to get more
  *   information.
  */
-function _xmlrpc($url, $args, $options = array()) {
+function _xmlrpc($url, array $args, array $headers = array()) {
   xmlrpc_clear_error();
   if (count($args) > 1) {
     $multicall_args = array();
@@ -558,16 +561,17 @@ function _xmlrpc($url, $args, $options = array()) {
     $args = $args[$method];
   }
   $xmlrpc_request = xmlrpc_request($method, $args);
-  // Required options which will replace any that are passed in.
-  $options['method'] = 'POST';
-  $options['headers']['Content-Type'] = 'text/xml';
-  $options['data'] = $xmlrpc_request->xml;
-  $result = drupal_http_request($url, $options);
-  if ($result->code != 200) {
-    xmlrpc_error($result->code, $result->error);
+
+  $headers['Content-Type'] = 'text/xml';
+
+  try {
+    $response = \Drupal::httpClient()->post($url, array('headers' => $headers, 'body' => $xmlrpc_request->xml));
+  }
+  catch (RequestException $exception) {
+    xmlrpc_error(NULL, $exception->getMethod());
     return FALSE;
   }
-  $message = xmlrpc_message($result->data);
+  $message = xmlrpc_message($response->getBody(TRUE));
   // Now parse what we've got back
   if (!xmlrpc_message_parse($message)) {
     // XML error

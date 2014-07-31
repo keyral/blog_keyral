@@ -5,33 +5,19 @@
  * Enables XML-RPC functionality.
  */
 
+use Drupal\Core\Routing\RouteMatchInterface;
+
 /**
  * Implements hook_help().
  */
-function xmlrpc_help($path, $args) {
-  switch ($path) {
-    case 'admin/help#xmlrpc':
+function xmlrpc_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.xmlrpc':
       $output = '';
-      $output .= '<p>' . t('The XML-RPC module gives external systems the opportunity to communicate with the site through the XML-RPC protocol. Pointing an XML-RPC client at <a href="@xmlrpc">xmlrpc.php</a> allows this communication to take place. For more information, see the online handbook entry for <a href="@xmlrpcapi">XML-RPC API</a>.', array(
-        '@xmlrpc' => url('xmlrpc.php', array('absolute' => TRUE)),
-        '@xmlrpcapi' => 'http://drupal.org/node/44895',
-      )) . '</p>';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The XML-RPC module gives external systems the opportunity to communicate with the site through the <a href="http://en.wikipedia.org/wiki/XML-RPC">XML-RPC protocol</a>. An XML-RPC client can communicate with the site by making a request to <a href="!xrphp">xmlrpc.php</a>. For more information, see <a href="!xrdocs">the online documentation for the XML-RPC module</a>.', array('!xrphp' => \Drupal::url('xmlrpc.php'),'!xrdocs' => 'https://drupal.org/documentation/modules/xmlrpc')) . '</p>';
       return $output;
   }
-}
-
-/**
- * Implements hook_menu().
- */
-function xmlrpc_menu() {
-  $items['xmlrpc.php'] = array(
-    'title' => 'XML-RPC',
-    'page callback' => 'xmlrpc_server_page',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-    'file' => 'xmlrpc.server.inc',
-  );
-  return $items;
 }
 
 /**
@@ -44,14 +30,14 @@ function xmlrpc_menu() {
  * ));
  * @endcode
  *
- * @param $url
+ * @param string $url
  *   An absolute URL of the XML-RPC endpoint.
- * @param $args
+ * @param array $args
  *   An associative array whose keys are the methods to call and whose values
  *   are the arguments to pass to the respective method. If multiple methods
  *   are specified, a system.multicall is performed.
- * @param $options
- *   (optional) An array of options to pass along to drupal_http_request().
+ * @param array $headers
+ *   (optional) An array of headers to pass along.
  *
  * @return
  *   For one request:
@@ -61,8 +47,10 @@ function xmlrpc_menu() {
  *     An array of results. Each result will either be the result
  *     returned by the method called, or an xmlrpc_error object if the call
  *     failed. See xmlrpc_error().
+ *
+ * @ingroup third_party
  */
-function xmlrpc($url, $args, $options = array()) {
+function xmlrpc($url, array $args, array $headers = array()) {
   module_load_include('inc', 'xmlrpc');
-  return _xmlrpc($url, $args, $options);
+  return _xmlrpc($url, $args, $headers);
 }

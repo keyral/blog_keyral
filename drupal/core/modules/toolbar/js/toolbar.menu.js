@@ -2,31 +2,32 @@
  * Builds a nested accordion widget.
  *
  * Invoke on an HTML list element with the jQuery plugin pattern.
- * - For example, $('.menu').toolbarMenu();
+ * - For example, $('.menu').drupalToolbarMenu();
  */
 
-(function ($, Drupal) {
+(function ($, Drupal, drupalSettings) {
 
-"use strict";
+  "use strict";
 
-/**
- * Store the open menu tray.
- */
-var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem'));
+  /**
+   * Store the open menu tray.
+   */
+  var activeItem = Drupal.url(drupalSettings.path.currentPath);
 
-  $.fn.toolbarMenu = function () {
+  $.fn.drupalToolbarMenu = function () {
 
     var ui = {
       'handleOpen': Drupal.t('Extend'),
       'handleClose': Drupal.t('Collapse')
     };
+
     /**
      * Handle clicks from the disclosure button on an item with sub-items.
      *
      * @param {Object} event
      *   A jQuery Event object.
      */
-    function toggleClickHandler (event) {
+    function toggleClickHandler(event) {
       var $toggle = $(event.target);
       var $item = $toggle.closest('li');
       // Toggle the list item.
@@ -34,15 +35,8 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
       // Close open sibling menus.
       var $openItems = $item.siblings().filter('.open');
       toggleList($openItems, false);
-      // Save link of the closest open item through a unique selector.
-      var href = $toggle.siblings('a[href]').attr('href');
-      if ($toggle.hasClass('open')) {
-        localStorage.setItem('Drupal.toolbar.menu.activeItem', JSON.stringify(href));
-      }
-      else {
-        localStorage.removeItem('Drupal.toolbar.menu.activeItem');
-      }
     }
+
     /**
      * Toggle the open/close state of a list is a menu.
      *
@@ -53,8 +47,8 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
      *   A flag that forces toggleClass to add or a remove a class, rather than
      *   simply toggling its presence.
      */
-    function toggleList ($item, switcher) {
-      var $toggle = $item.find('> .box > .handle');
+    function toggleList($item, switcher) {
+      var $toggle = $item.children('.toolbar-box').children('.toolbar-handle');
       switcher = (typeof switcher !== 'undefined') ? switcher : !$item.hasClass('open');
       // Toggle the item open state.
       $item.toggleClass('open', switcher);
@@ -64,38 +58,40 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
       $toggle
         .find('.action')
         // Expand Structure, Collapse Structure
-        .text((switcher) ?  ui.handleClose : ui.handleOpen);
+        .text((switcher) ? ui.handleClose : ui.handleOpen);
     }
+
     /**
      * Add markup to the menu elements.
      *
      * Items with sub-elements have a list toggle attached to them. Menu item
      * links and the corresponding list toggle are wrapped with in a div
-     * classed with .box. The .box div provides a positioning context for the
-     * item list toggle.
+     * classed with .toolbar-box. The .toolbar-box div provides a positioning
+     * context for the item list toggle.
      *
      * @param {jQuery} $menu
      *   The root of the menu to be initialized.
      */
-    function initItems ($menu) {
+    function initItems($menu) {
       var options = {
-        'class': 'icon handle',
+        'class': 'toolbar-icon toolbar-handle',
         'action': ui.handleOpen,
         'text': ''
       };
       // Initialize items and their links.
-      $menu.find('li > a').wrap('<div class="box">');
-        // Add a handle to each list item if it has a menu.
+      $menu.find('li > a').wrap('<div class="toolbar-box">');
+      // Add a handle to each list item if it has a menu.
       $menu.find('li').each(function (index, element) {
-          var $item = $(element);
-          if ($item.find('> ul.menu').length) {
-            var $box = $item.find('> .box');
-            options.text = Drupal.t('@label', {'@label': $box.find('a').text()});
-            $item.find('> .box')
-              .append(Drupal.theme('toolbarMenuItemToggle', options));
-          }
-        });
+        var $item = $(element);
+        if ($item.children('ul.menu').length) {
+          var $box = $item.children('.toolbar-box');
+          options.text = Drupal.t('@label', {'@label': $box.find('a').text()});
+          $item.children('.toolbar-box')
+            .append(Drupal.theme('toolbarMenuItemToggle', options));
+        }
+      });
     }
+
     /**
      * Adds a level class to each list based on its depth in the menu.
      *
@@ -108,14 +104,15 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
      * @param {Integer} level
      *   The current level number to be assigned to the list elements.
      */
-    function markListLevels ($lists, level) {
+    function markListLevels($lists, level) {
       level = (!level) ? 1 : level;
-      var $lis = $lists.find('> li').addClass('level-' + level);
-      $lists = $lis.find('> ul');
+      var $lis = $lists.children('li').addClass('level-' + level);
+      $lists = $lis.children('ul');
       if ($lists.length) {
         markListLevels($lists, level + 1);
       }
     }
+
     /**
      * On page load, open the active menu item.
      *
@@ -125,7 +122,7 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
      * @param {jQuery} $menu
      *   The root of the menu.
      */
-    function openActiveItem ($menu) {
+    function openActiveItem($menu) {
       var pathItem = $menu.find('a[href="' + location.pathname + '"]');
       if (pathItem.length && !activeItem) {
         activeItem = location.pathname;
@@ -136,25 +133,10 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
         toggleList($activeTrail, true);
       }
     }
-    /**
-     * Store the last-clicked menu item to decorate the active menu trail.
-     *
-     * @param {jQuery} event
-     *   A jQuery click event.
-     */
-    function storeActiveItem (event) {
-      var href = $(event.target).attr('href');
-      if (href) {
-        localStorage.setItem('Drupal.toolbar.menu.activeItem', JSON.stringify(href));
-      }
-      else {
-        localStorage.removeItem('Drupal.toolbar.menu.activeItem');
-      }
-    }
+
     // Bind event handlers.
     $(document)
-      .on('click.toolbar', '.handle', toggleClickHandler)
-      .on('click.toolbar', 'li > .box > a', storeActiveItem);
+      .on('click.toolbar', '.toolbar-handle', toggleClickHandler);
     // Return the jQuery object.
     return this.each(function (selector) {
       var $menu = $(this).once('toolbar-menu');
@@ -178,4 +160,4 @@ var activeItem = JSON.parse(localStorage.getItem('Drupal.toolbar.menu.activeItem
     return '<button class="' + options['class'] + '"><span class="action">' + options.action + '</span><span class="label">' + options.text + '</span></button>';
   };
 
-}(jQuery, Drupal));
+}(jQuery, Drupal, drupalSettings));

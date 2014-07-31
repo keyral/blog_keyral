@@ -8,7 +8,7 @@ namespace Drupal\Component\Plugin\Factory;
 
 use Drupal\Component\Plugin\Discovery\DiscoveryInterface;
 use Drupal\Component\Plugin\Exception\PluginException;
-use Drupal\Component\Plugin\Derivative\DerivativeInterface;
+use Drupal\Component\Plugin\Derivative\DeriverInterface;
 
 /**
  * Default plugin factory.
@@ -26,7 +26,7 @@ class DefaultFactory implements FactoryInterface {
    * The plugin definition includes the plugin class and possibly other
    * information necessary for proper instantiation.
    *
-   * @var Drupal\Component\Plugin\Discovery\DiscoveryInterface
+   * @var \Drupal\Component\Plugin\Discovery\DiscoveryInterface
    */
   protected $discovery;
 
@@ -40,22 +40,26 @@ class DefaultFactory implements FactoryInterface {
   /**
    * Implements Drupal\Component\Plugin\Factory\FactoryInterface::createInstance().
    */
-  public function createInstance($plugin_id, array $configuration) {
-    $plugin_class = $this->getPluginClass($plugin_id);
-    return new $plugin_class($configuration, $plugin_id, $this->discovery);
+  public function createInstance($plugin_id, array $configuration = array()) {
+    $plugin_definition = $this->discovery->getDefinition($plugin_id);
+    $plugin_class = static::getPluginClass($plugin_id, $plugin_definition);
+    return new $plugin_class($configuration, $plugin_id, $plugin_definition);
   }
 
   /**
    * Finds the class relevant for a given plugin.
    *
-   *  @param array $plugin_id
-   *    The id of a plugin.
+   * @param string $plugin_id
+   *   The id of a plugin.
+   * @param mixed $plugin_definition
+   *   The plugin definition associated with the plugin ID.
    *
-   *  @return string
-   *    The appropriate class name.
+   * @return string
+   *   The appropriate class name.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
-  protected function getPluginClass($plugin_id) {
-    $plugin_definition = $this->discovery->getDefinition($plugin_id);
+  public static function getPluginClass($plugin_id, $plugin_definition = NULL) {
     if (empty($plugin_definition['class'])) {
       throw new PluginException(sprintf('The plugin (%s) did not specify an instance class.', $plugin_id));
     }

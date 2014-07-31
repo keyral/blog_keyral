@@ -17,14 +17,14 @@ class SelectExtender implements SelectInterface {
   /**
    * The Select query object we are extending/decorating.
    *
-   * @var Drupal\Core\Database\Query\SelectInterface
+   * @var \Drupal\Core\Database\Query\SelectInterface
    */
   protected $query;
 
   /**
    * The connection object on which to run this query.
    *
-   * @var DatabaseConnection
+   * @var \Drupal\Core\Database\Connection
    */
   protected $connection;
 
@@ -74,7 +74,7 @@ class SelectExtender implements SelectInterface {
   }
 
   public function hasAnyTag() {
-    return call_user_func_array(array($this->query, 'hasAnyTags'), func_get_args());
+    return call_user_func_array(array($this->query, 'hasAnyTag'), func_get_args());
   }
 
   public function addMetaData($key, $object) {
@@ -326,5 +326,26 @@ class SelectExtender implements SelectInterface {
     else {
       return $return;
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function conditionGroupFactory($conjunction = 'AND') {
+    return new Condition($conjunction);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function andConditionGroup() {
+    return $this->conditionGroupFactory('AND');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function orConditionGroup() {
+    return $this->conditionGroupFactory('OR');
   }
 }

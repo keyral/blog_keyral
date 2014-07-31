@@ -1,8 +1,6 @@
-
 /* ---------- Color Module Styles ----------- */
 
-body,
-body.overlay {
+body {
   color: #3b3b3b;
 }
 .comment .comment-arrow {
@@ -22,22 +20,26 @@ body.overlay {
   border-bottom: 1px solid #ffffff;
 }
 #header {
-  background-color: #48a9e4;
-  background-image: -moz-linear-gradient(top, #0779bf 0%, #48a9e4 100%);
-  background-image: -ms-linear-gradient(top, #0779bf 0%, #48a9e4 100%);
-  background-image: -o-linear-gradient(top, #0779bf 0%, #48a9e4 100%);
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0, #0779bf), color-stop(1, #48a9e4));
-  background-image: -webkit-linear-gradient(top, #0779bf 0%, #48a9e4 100%);
-  background-image: linear-gradient(top, #0779bf 0%, #48a9e4 100%);
+  background-color: #1d84c3;
+  background-image: -moz-linear-gradient(to bottom, #055a8e 0%, #1d84c3 100%);
+  background-image: -ms-linear-gradient(to bottom, #055a8e 0%, #1d84c3 100%);
+  background-image: -o-linear-gradient(to bottom, #055a8e 0%, #1d84c3 100%);
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0.7, #055a8e), color-stop(1, #1d84c3));
+  background-image: -webkit-linear-gradient(to bottom, #055a8e 0%, #1d84c3 100%);
+  background-image: linear-gradient(to bottom, #055a8e 0%, #1d84c3 100%);
 }
-a {
+a,
+.link {
   color: #0071b3;
 }
 a:hover,
-a:focus {
+a:focus,
+.link:hover,
+.link:focus {
   color: #018fe2;
 }
-a:active {
+a:active,
+.link:active {
   color: #23aeff;
 }
 .sidebar .block {
@@ -52,7 +54,9 @@ a:active {
 .region-header a,
 .region-header li a.active,
 #name-and-slogan,
+.site-branding-block,
 #name-and-slogan a,
+.site-branding-block a,
 #secondary-menu-links li a {
   color: #fffeff;
 }

@@ -20,10 +20,17 @@ class MemoryStorage extends StorageBase {
   protected $data = array();
 
   /**
+   * {@inheritdoc}
+   */
+  public function has($key) {
+    return array_key_exists($key, $this->data);
+  }
+
+  /**
    * Implements Drupal\Core\KeyValueStore\KeyValueStoreInterface::get().
    */
-  public function get($key) {
-    return array_key_exists($key, $this->data) ? $this->data[$key] : NULL;
+  public function get($key, $default = NULL) {
+    return array_key_exists($key, $this->data) ? $this->data[$key] : $default;
   }
 
   /**
@@ -66,6 +73,14 @@ class MemoryStorage extends StorageBase {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function rename($key, $new_key) {
+    $this->data[$new_key] = $this->data[$key];
+    unset($this->data[$key]);
+  }
+
+  /**
    * Implements Drupal\Core\KeyValueStore\KeyValueStoreInterface::delete().
    */
   public function delete($key) {
@@ -81,4 +96,10 @@ class MemoryStorage extends StorageBase {
     }
   }
 
+  /**
+   * Implements Drupal\Core\KeyValueStore\KeyValueStoreInterface::deleteAll().
+   */
+  public function deleteAll() {
+    $this->data = array();
+  }
 }

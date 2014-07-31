@@ -7,13 +7,12 @@
 
 namespace Drupal\Core\Database\Driver\pgsql;
 
+use Drupal\Component\Utility\String;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Database\Query\Condition;
 use Drupal\Core\Database\SchemaObjectExistsException;
 use Drupal\Core\Database\SchemaObjectDoesNotExistException;
 use Drupal\Core\Database\Schema as DatabaseSchema;
-
-use Exception;
 
 /**
  * @addtogroup schemaapi
@@ -103,9 +102,6 @@ class Schema extends DatabaseSchema {
     $schema = $prefixInfo['schema'];
     $table_name = $prefixInfo['table'];
 
-    $field_information = (object) array(
-        'checks' => array(),
-    );
     $checks = $this->connection->query("SELECT conname FROM pg_class cl INNER JOIN pg_constraint co ON co.conrelid = cl.oid INNER JOIN pg_attribute attr ON attr.attrelid = cl.oid AND attr.attnum = ANY (co.conkey) INNER JOIN pg_namespace ns ON cl.relnamespace = ns.oid WHERE co.contype = 'c' AND ns.nspname = :schema AND cl.relname = :table AND attr.attname = :column", array(
       ':schema' => $schema,
       ':table' => $table_name,
@@ -134,7 +130,7 @@ class Schema extends DatabaseSchema {
 
     $sql_keys = array();
     if (isset($table['primary key']) && is_array($table['primary key'])) {
-      $sql_keys[] = 'PRIMARY KEY (' . implode(', ', $table['primary key']) . ')';
+      $sql_keys[] = 'PRIMARY KEY (' . $this->createPrimaryKeySql($table['primary key']) . ')';
     }
     if (isset($table['unique keys']) && is_array($table['unique keys'])) {
       foreach ($table['unique keys'] as $key_name => $key) {
@@ -211,7 +207,7 @@ class Schema extends DatabaseSchema {
       }
     }
     if (isset($spec['default'])) {
-      $default = is_string($spec['default']) ? "'" . $spec['default'] . "'" : $spec['default'];
+      $default = is_string($spec['default']) ? $this->connection->quote($spec['default']) : $spec['default'];
       $sql .= " default $default";
     }
 
@@ -322,6 +318,26 @@ class Schema extends DatabaseSchema {
     return implode(', ', $return);
   }
 
+  /**
+   * Create the SQL expression for primary keys.
+   *
+   * Postgresql does not support key length. It does support fillfactor, but
+   * that requires a separate database lookup for each column in the key. The
+   * key length defined in the schema is ignored.
+   */
+  protected function createPrimaryKeySql($fields) {
+    $return = array();
+    foreach ($fields as $field) {
+      if (is_array($field)) {
+        $return[] = '"' . $field[0] . '"';
+      }
+      else {
+        $return[] = '"' . $field . '"';
+      }
+    }
+    return implode(', ', $return);
+  }
+
   function renameTable($table, $new_name) {
     if (!$this->tableExists($table)) {
       throw new SchemaObjectDoesNotExistException(t("Cannot rename @table to @table_new: table @table doesn't exist.", array('@table' => $table, '@table_new' => $new_name)));
@@ -348,6 +364,16 @@ class Schema extends DatabaseSchema {
     // Ensure the new table name does not include schema syntax.
     $prefixInfo = $this->getPrefixInfo($new_name);
     $this->connection->query('ALTER TABLE {' . $table . '} RENAME TO ' . $prefixInfo['table']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function copyTable($source, $destination) {
+    // @TODO The server is likely going to rename indexes and constraints
+    //   during the copy process, and it will not match our
+    //   table_name + constraint name convention anymore.
+    throw new \Exception('Not implemented, see https://drupal.org/node/2061879');
   }
 
   public function dropTable($table) {
@@ -410,7 +436,7 @@ class Schema extends DatabaseSchema {
       $default = 'NULL';
     }
     else {
-      $default = is_string($default) ? "'$default'" : $default;
+      $default = is_string($default) ? $this->connection->quote($default) : $default;
     }
 
     $this->connection->query('ALTER TABLE {' . $table . '} ALTER COLUMN "' . $field . '" SET DEFAULT ' . $default);
@@ -451,7 +477,7 @@ class Schema extends DatabaseSchema {
       throw new SchemaObjectExistsException(t("Cannot add primary key to table @table: primary key already exists.", array('@table' => $table)));
     }
 
-    $this->connection->query('ALTER TABLE {' . $table . '} ADD PRIMARY KEY (' . implode(',', $fields) . ')');
+    $this->connection->query('ALTER TABLE {' . $table . '} ADD PRIMARY KEY (' . $this->createPrimaryKeySql($fields) . ')');
   }
 
   public function dropPrimaryKey($table) {
@@ -577,7 +603,7 @@ class Schema extends DatabaseSchema {
       // Set sequence to maximal field value to not conflict with existing
       // entries.
       $this->connection->query("SELECT setval('" . $seq . "', MAX(\"" . $field . '")) FROM {' . $table . "}");
-      $this->connection->query('ALTER TABLE {' . $table . '} ALTER "' . $field . '" SET DEFAULT nextval(\'' . $seq . '\')');
+      $this->connection->query('ALTER TABLE {' . $table . '} ALTER ' . $field . ' SET DEFAULT nextval(' . $this->connection->quote($seq) . ')');
     }
 
     // Rename the column if necessary.

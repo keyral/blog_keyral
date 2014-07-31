@@ -5,61 +5,70 @@
  * Miscellaneous functions.
  */
 
+use Drupal\Component\Utility\Variable;
+use Drupal\Core\PhpStorage\PhpStorageFactory;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\DrupalKernel;
+use Symfony\Component\HttpFoundation\Request;
+use Composer\Autoload\ClassLoader;
+
 /**
  * Drupal-friendly var_export().
  *
- * @param $var
+ * @param mixed $var
  *   The variable to export.
- * @param $prefix
+ * @param string $prefix
  *   A prefix that will be added at the beginning of every lines of the output.
- * @return
+ *
+ * @return string
  *   The variable exported in a way compatible to Drupal's coding standards.
+ *
+ * @deprecated in Drupal 8.x-dev, will be removed before Drupal 8.0.
+ *   Use \Drupal\Component\Utility\Variable::export().
  */
 function drupal_var_export($var, $prefix = '') {
-  if (is_array($var)) {
-    if (empty($var)) {
-      $output = 'array()';
-    }
-    else {
-      $output = "array(\n";
-      // Don't export keys if the array is non associative.
-      $export_keys = array_values($var) != $var;
-      foreach ($var as $key => $value) {
-        $output .= '  ' . ($export_keys ? drupal_var_export($key) . ' => ' : '') . drupal_var_export($value, '  ', FALSE) . ",\n";
-      }
-      $output .= ')';
-    }
-  }
-  elseif (is_bool($var)) {
-    $output = $var ? 'TRUE' : 'FALSE';
-  }
-  elseif (is_string($var)) {
-    $line_safe_var = str_replace("\n", '\n', $var);
-    if (strpos($var, "\n") !== FALSE || strpos($var, "'") !== FALSE) {
-      // If the string contains a line break or a single quote, use the
-      // double quote export mode. Encode backslash and double quotes and
-      // transform some common control characters.
-      $var = str_replace(array('\\', '"', "\n", "\r", "\t"), array('\\\\', '\"', '\n', '\r', '\t'), $var);
-      $output = '"' . $var . '"';
-    }
-    else {
-      $output = "'" . $var . "'";
-    }
-  }
-  elseif (is_object($var) && get_class($var) === 'stdClass') {
-    // var_export() will export stdClass objects using an undefined
-    // magic method __set_state() leaving the export broken. This
-    // workaround avoids this by casting the object as an array for
-    // export and casting it back to an object when evaluated.
-    $output = '(object) ' . drupal_var_export((array) $var, $prefix);
-  }
-  else {
-    $output = var_export($var, TRUE);
+  return Variable::export($var, $prefix);
+}
+
+/**
+ * Rebuilds all caches even when Drupal itself does not work.
+ *
+ * Requires DRUPAL_BOOTSTRAP_CONFIGURATION.
+ *
+ * @param \Composer\Autoload\ClassLoader $classloader
+ *   The classloader.
+ * @param \Symfony\Component\HttpFoundation\Request $request
+ *   The current request.
+ *
+ * @see rebuild.php
+ */
+function drupal_rebuild(ClassLoader $classloader, Request $request) {
+  // Remove Drupal's error and exception handlers; they rely on a working
+  // service container and other subsystems and will only cause a fatal error
+  // that hides the actual error.
+  restore_error_handler();
+  restore_exception_handler();
+
+  // Force kernel to rebuild container.
+  PhpStorageFactory::get('service_container')->deleteAll();
+  PhpStorageFactory::get('twig')->deleteAll();
+
+  // Bootstrap up to where caches exist and clear them.
+  $kernel = new DrupalKernel('prod', $classloader);
+  $kernel->setSitePath(DrupalKernel::findSitePath($request));
+  $kernel->prepareLegacyRequest($request);
+
+  foreach (Cache::getBins() as $bin) {
+    $bin->deleteAll();
   }
 
-  if ($prefix) {
-    $output = str_replace("\n", "\n$prefix", $output);
-  }
+  // Disable the page cache.
+  drupal_page_is_cacheable(FALSE);
 
-  return $output;
+  drupal_flush_all_caches();
+
+  // Restore Drupal's error and exception handlers.
+  // @see \Drupal\Core\DrupalKernel::boot()
+  set_error_handler('_drupal_error_handler');
+  set_exception_handler('_drupal_exception_handler');
 }

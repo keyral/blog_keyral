@@ -12,7 +12,7 @@
  * a multistep process. This script actually performs the selected operations
  * without loading all of Drupal, to be able to more gracefully recover from
  * errors. Access to the script is controlled by a global killswitch in
- * settings.php ('allow_operations') and via the 'administer software
+ * settings.php ('allow_authorize_operations') and via the 'administer software
  * updates' permission.
  *
  * There are helper functions for setting up an operation to run via this
@@ -20,33 +20,24 @@
  * @link authorize Authorized operation helper functions @endlink
  */
 
+use Drupal\Core\DrupalKernel;
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Site\Settings;
+use Drupal\Core\Page\DefaultHtmlPageRenderer;
+
 // Change the directory to the Drupal root.
 chdir('..');
 
-/**
- * Defines the root directory of the Drupal installation.
- */
-define('DRUPAL_ROOT', getcwd());
+$autoloader = require_once __DIR__ . '/vendor/autoload.php';
 
 /**
  * Global flag to identify update.php and authorize.php runs.
  *
  * Identifies update.php and authorize.php runs, avoiding unwanted operations
- * such as hook_init() and hook_exit() invokes, css/js preprocessing and
- * translation, and solves some theming issues. The flag is checked in other
- * places in Drupal code (not just authorize.php).
+ * such as css/js preprocessing and translation, and solves some theming issues.
+ * The flag is checked in other places in Drupal code (not just authorize.php).
  */
 const MAINTENANCE_MODE = 'update';
-
-/**
- * Renders a 403 access denied page for authorize.php.
- */
-function authorize_access_denied_page() {
-  drupal_add_http_header('Status', '403 Forbidden');
-  watchdog('access denied', 'authorize.php', NULL, WATCHDOG_WARNING);
-  drupal_set_title('Access denied');
-  return t('You are not allowed to access this page.');
-}
 
 /**
  * Determines if the current user is allowed to run authorize.php.
@@ -54,38 +45,24 @@ function authorize_access_denied_page() {
  * The killswitch in settings.php overrides all else, otherwise, the user must
  * have access to the 'administer software updates' permission.
  *
- * @return
+ * @return bool
  *   TRUE if the current user can run authorize.php, and FALSE if not.
  */
 function authorize_access_allowed() {
-  return config('system.authorize')->get('allow_operations') && user_access('administer software updates');
+  \Drupal::service('session_manager')->startLazy();
+  return Settings::get('allow_authorize_operations', TRUE) && \Drupal::currentUser()->hasPermission('administer software updates');
 }
 
-// *** Real work of the script begins here. ***
-
-require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
-require_once DRUPAL_ROOT . '/core/includes/common.inc';
-require_once DRUPAL_ROOT . '/core/includes/file.inc';
-require_once DRUPAL_ROOT . '/core/includes/module.inc';
-require_once DRUPAL_ROOT . '/core/includes/ajax.inc';
-
-// We prepare only a minimal bootstrap. This includes the database and
-// variables, however, so we have access to the class autoloader.
-drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
-
-// This must go after drupal_bootstrap(), which unsets globals!
-global $conf;
+$request = Request::createFromGlobals();
+$kernel = DrupalKernel::createFromRequest($request, $autoloader, 'prod');
+$kernel->prepareLegacyRequest($request);
 
 // We have to enable the user and system modules, even to check access and
 // display errors via the maintenance theme.
-$module_list['system']['filename'] = 'core/modules/system/system.module';
-$module_list['user']['filename'] = 'core/modules/user/user.module';
-module_list(NULL, $module_list);
-drupal_load('module', 'system');
-drupal_load('module', 'user');
-
-// Initialize the language system.
-drupal_language_initialize();
+\Drupal::moduleHandler()->addModule('system', 'core/modules/system');
+\Drupal::moduleHandler()->addModule('user', 'core/modules/user');
+\Drupal::moduleHandler()->load('system');
+\Drupal::moduleHandler()->load('user');
 
 // Initialize the maintenance theme for this administrative script.
 drupal_maintenance_theme();
@@ -95,16 +72,14 @@ $show_messages = TRUE;
 
 if (authorize_access_allowed()) {
   // Load both the Form API and Batch API.
-  require_once DRUPAL_ROOT . '/core/includes/form.inc';
-  require_once DRUPAL_ROOT . '/core/includes/batch.inc';
-  // Load the code that drives the authorize process.
-  require_once DRUPAL_ROOT . '/core/includes/authorize.inc';
+  require_once __DIR__ . '/includes/form.inc';
+  require_once __DIR__ . '/includes/batch.inc';
 
-  if (isset($_SESSION['authorize_operation']['page_title'])) {
-    drupal_set_title($_SESSION['authorize_operation']['page_title']);
+  if (isset($_SESSION['authorize_page_title'])) {
+    $page_title = $_SESSION['authorize_page_title'];
   }
   else {
-    drupal_set_title(t('Authorize file system changes'));
+    $page_title = t('Authorize file system changes');
   }
 
   // See if we've run the operation and need to display a report.
@@ -116,13 +91,17 @@ if (authorize_access_allowed()) {
     unset($_SESSION['authorize_filetransfer_info']);
 
     if (!empty($results['page_title'])) {
-      drupal_set_title($results['page_title']);
+      $page_title = $results['page_title'];
     }
     if (!empty($results['page_message'])) {
       drupal_set_message($results['page_message']['message'], $results['page_message']['type']);
     }
 
-    $output = theme('authorize_report', array('messages' => $results['messages']));
+    $authorize_report = array(
+      '#theme' => 'authorize_report',
+      '#messages' => $results['messages'],
+    );
+    $output = drupal_render($authorize_report);
 
     $links = array();
     if (is_array($results['tasks'])) {
@@ -135,11 +114,16 @@ if (authorize_access_allowed()) {
       ));
     }
 
-    $output .= theme('item_list', array('items' => $links, 'title' => t('Next steps')));
+    $item_list = array(
+      '#theme' => 'item_list',
+      '#items' => $links,
+      '#title' => t('Next steps'),
+    );
+    $output .= drupal_render($item_list);
   }
   // If a batch is running, let it run.
-  elseif (isset($_GET['batch'])) {
-    $output = _batch_page();
+  elseif ($request->query->has('batch')) {
+    $output = _batch_page($request);
   }
   else {
     if (empty($_SESSION['authorize_operation']) || empty($_SESSION['authorize_filetransfer_info'])) {
@@ -147,7 +131,7 @@ if (authorize_access_allowed()) {
     }
     elseif (!$batch = batch_get()) {
       // We have a batch to process, show the filetransfer form.
-      $elements = drupal_get_form('authorize_filetransfer_form');
+      $elements = \Drupal::formBuilder()->getForm('Drupal\Core\FileTransfer\Form\FileTransferAuthorizeForm');
       $output = drupal_render($elements);
     }
   }
@@ -155,9 +139,15 @@ if (authorize_access_allowed()) {
   $show_messages = !(($batch = batch_get()) && isset($batch['running']));
 }
 else {
-  $output = authorize_access_denied_page();
+  drupal_add_http_header('Status', '403 Forbidden');
+  \Drupal::logger('access denied')->warning('authorize.php');
+  $page_title = t('Access denied');
+  $output = t('You are not allowed to access this page.');
 }
 
 if (!empty($output)) {
-  print theme('update_page', array('content' => $output, 'show_messages' => $show_messages));
+  drupal_add_http_header('Content-Type', 'text/html; charset=utf-8');
+  print DefaultHtmlPageRenderer::renderPage($output, $page_title, 'maintenance', array(
+    '#show_messages' => $show_messages,
+  ));
 }

@@ -5,8 +5,10 @@ CONTENTS OF THIS FILE
  * Requirements and notes
  * Optional server requirements
  * Installation
+ * Reinstall
  * Building and customizing your site
  * Multisite configuration
+ * Multilingual configuration
  * More information
 
 REQUIREMENTS AND NOTES
@@ -17,11 +19,13 @@ Drupal requires:
 - A web server with PHP support, for example:
   - Apache 2.0 (or greater) (http://httpd.apache.org/).
   - Nginx 1.1 (or greater) (http://www.nginx.com/).
-- PHP 5.3.5 (or greater) (http://www.php.net/).
+- PHP 5.4.2 (or greater) (http://www.php.net/).
 - One of the following databases:
   - MySQL 5.0.15 (or greater) (http://www.mysql.com/).
   - MariaDB 5.1.44 (or greater) (http://mariadb.org/). MariaDB is a fully
     compatible drop-in replacement for MySQL.
+  - Percona Server 5.1.70 (or greater) (http://www.percona.com/). Percona
+    Server is a backwards-compatible replacement for MySQL.
   - PostgreSQL 8.3 (or greater) (http://www.postgresql.org/).
   - SQLite 3.4.2 (or greater) (http://www.sqlite.org/).
 
@@ -82,27 +86,7 @@ INSTALLATION
 
      mv drupal-x.y/* drupal-x.y/.htaccess /path/to/your/installation
 
-2. Optionally, download a translation.
-
-   By default, Drupal is installed in English, and further languages may be
-   installed later. If you prefer to install Drupal in another language
-   initially:
-
-   - Download a translation file for the correct Drupal version and language
-     from the translation server: http://localize.drupal.org/translate/downloads
-
-   - Place the file into the dedicated translations directory. By default this
-     directory is:
-
-       sites/default/files/translations/
-
-     If the directory doesn't exist, you should create it. Make sure your file
-     is named drupal-VERSION.LANGCODE.po (for example, the German
-     translation for Drupal 8.0 should be named drupal-8.0.de.po).
-
-   For detailed instructions, visit http://drupal.org/localize
-
-3. Create the Drupal database.
+2. Create the Drupal database.
 
    Because Drupal stores all site information in a database, the Drupal
    installer will attempt to create this database for you. If you create the
@@ -114,7 +98,7 @@ INSTALLATION
    Take note of the username, password, database name, and hostname as you
    create the database. You will enter this information during the install.
 
-4. Run the install script.
+3. Run the install script.
 
    To run the install script, point your browser to the base URL of your
    website (e.g., http://www.example.com).
@@ -194,7 +178,7 @@ INSTALLATION
         chmod go-w sites/default/settings.php
         chmod go-w sites/default
 
-5. Verify that the site is working.
+4. Verify that the site is working.
 
    When the install script finishes, you will be logged in with the site
    maintenance account on a "Welcome" page. If the default Drupal theme is not
@@ -202,7 +186,7 @@ INSTALLATION
    you may be experiencing problems with clean URLs. Visit
    http://drupal.org/getting-started/clean-urls to troubleshoot.
 
-6. Change file system storage settings (optional).
+5. Change file system storage settings (optional).
 
    The files directory created in step 4 is the default file system path used to
    store all uploaded files, as well as some temporary files created by
@@ -242,7 +226,7 @@ INSTALLATION
    on an existing site, remember to copy all files from the original location
    to the new location.
 
-7. Revoke documentation file permissions (optional).
+6. Revoke documentation file permissions (optional).
 
    Some administrators suggest making the documentation files, especially
    CHANGELOG.txt, non-readable so that the exact version of Drupal you are
@@ -262,7 +246,7 @@ INSTALLATION
    "Modifying Windows file permissions" (http://drupal.org/node/202491) in the
    Drupal.org online documentation.
 
-8. Set up independent "cron" maintenance jobs.
+7. Set up independent "cron" maintenance jobs.
 
    Many Drupal modules have tasks that must be run periodically, including the
    Search module (building and updating the index used for keyword searching),
@@ -302,6 +286,20 @@ INSTALLATION
    scripts/ directory. (Note that these scripts must be customized like the
    above example, to add your site-specific cron key and domain name.)
 
+REINSTALL
+------------
+
+Drupal can be reinstalled without downloading and extracting the Drupal release.
+
+1. Drop all the tables in your database.
+
+2. Remove everything in sites/default/files.
+
+3. Remove sites/default/settings.php.
+
+4. Follow the Installation Instructions above starting from Step 3 (Run the
+   install script).
+
 BUILDING AND CUSTOMIZING YOUR SITE
 ----------------------------------
 
@@ -312,9 +310,9 @@ of Drupal provides several optional modules and themes, and you can download
 more at http://drupal.org/project/modules and http://drupal.org/project/themes
 
 Do not mix downloaded or custom modules and themes with Drupal's core modules
-and themes. Drupal's modules and themes are located in the top-level modules and
-themes directories, while the modules and themes you add to Drupal are normally
-placed in the /modules and /themes directories. If you run a multisite
+and themes. Drupal's modules and themes are located in the /core/modules and
+/core/themes directories, while the modules and themes you add to Drupal are
+normally placed in the /modules and /themes directories. If you run a multisite
 installation, you can also place modules and themes in the site-specific
 directories -- see the Multisite Configuration section, below.
 
@@ -330,13 +328,21 @@ MULTISITE CONFIGURATION
 A single Drupal installation can host several Drupal-powered sites, each with
 its own individual configuration.
 
+For this to work you need the file sites/sites.php to exist. Make a copy of
+the example.sites.php file:
+
+  $ cp sites/example.sites.php sites/sites.php
+
 Additional site configurations are created in subdirectories within the 'sites'
 directory. Each subdirectory must have a 'settings.php' file, which specifies
 the configuration settings. The easiest way to create additional sites is to
-copy the 'default' directory and modify the 'settings.php' file as appropriate.
-The new directory name is constructed from the site's URL. The configuration for
-www.example.com could be in 'sites/example.com/settings.php' (note that 'www.'
-should be omitted if users can access your site at http://example.com/).
+copy file 'default.settings.php' from the 'sites/default' directory into the
+new site directory with file name 'settings.php' and modify as appropriate.
+The new directory name is constructed from the site's URL. The configuration
+for www.example.com could be in 'sites/example.com/settings.php' (note that
+'www.' should be omitted if users can access your site at http://example.com/).
+
+  $ cp sites/default/defaults.settings.php sites/example.com/settings.php
 
 Sites do not have to have a different domain. You can also use subdomains and
 subdirectories for Drupal sites. For example, example.com, sub.example.com, and
@@ -384,6 +390,14 @@ settings, consult http://drupal.org/getting-started/6/install/multi-site
 For more information on configuring Drupal's file system path in a multisite
 configuration, see step 6 above.
 
+MULTILINGUAL CONFIGURATION
+--------------------------
+
+By default, Drupal is installed in one language, and further languages may be
+installed later.
+
+For detailed instructions, visit http://drupal.org/documentation/multilingual
+
 MORE INFORMATION
 ----------------
 
@@ -392,7 +406,7 @@ MORE INFORMATION
 
 - For a list of security announcements, see the "Security advisories" page at
   http://drupal.org/security (available as an RSS feed). This page also
-  describes how to subscribe to these announcements via e-mail.
+  describes how to subscribe to these announcements via email.
 
 - For information about the Drupal security process, or to find out how to
   report a potential security issue to the Drupal security team, see the

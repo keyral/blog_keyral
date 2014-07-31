@@ -2,11 +2,12 @@
 
 /**
  * @file
- * Definition of Drupal\Core\Template\AttributeArray.
+ * Contains \Drupal\Core\Template\AttributeArray.
  */
 
 namespace Drupal\Core\Template;
 
+use Drupal\Component\Utility\String;
 
 /**
  * A class that defines a type of Attribute that can be added to as an array.
@@ -14,17 +15,17 @@ namespace Drupal\Core\Template;
  * To use with Attribute, the array must be specified.
  * Correct:
  * @code
- *  $attributes = new Attribute(array());
+ *  $attributes = new Attribute();
  *  $attributes['class'] = array();
  *  $attributes['class'][] = 'cat';
  * @endcode
  * Incorrect:
  * @code
- *  $attributes = new Attribute(array());
+ *  $attributes = new Attribute();
  *  $attributes['class'][] = 'cat';
  * @endcode
  *
- * @see Drupal\Core\Template\Attribute
+ * @see \Drupal\Core\Template\Attribute
  */
 class AttributeArray extends AttributeValueBase implements \ArrayAccess, \IteratorAggregate {
 
@@ -65,8 +66,7 @@ class AttributeArray extends AttributeValueBase implements \ArrayAccess, \Iterat
    * Implements the magic __toString() method.
    */
   public function __toString() {
-    $this->printed = TRUE;
-    return implode(' ', array_map('check_plain', $this->value));
+    return String::checkPlain(implode(' ', $this->value));
   }
 
   /**

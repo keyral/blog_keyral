@@ -6,6 +6,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Parameter;
+use Symfony\Component\ExpressionLanguage\Expression;
 
 $container = new ContainerBuilder();
 $container->
@@ -14,9 +15,8 @@ $container->
     addTag('foo', array('bar' => 'bar'))->
     setFactoryClass('FooClass')->
     setFactoryMethod('getInstance')->
-    setArguments(array('foo', new Reference('foo.baz'), array('%foo%' => 'foo is %foo%', 'bar' => '%foo%'), true, new Reference('service_container')))->
-    setProperties(array('foo' => 'bar', 'moo' => new Reference('foo.baz')))->
-    setScope('prototype')->
+    setArguments(array('foo', new Reference('foo.baz'), array('%foo%' => 'foo is %foo%', 'foobar' => '%foo%'), true, new Reference('service_container')))->
+    setProperties(array('foo' => 'bar', 'moo' => new Reference('foo.baz'), 'qux' => array('%foo%' => 'foo is %foo%', 'foobar' => '%foo%')))->
     addMethodCall('setBar', array(new Reference('bar')))->
     addMethodCall('initialize')->
     setConfigurator('sc_configure')
@@ -33,7 +33,10 @@ $container->
     setFactoryMethod('getInstance')->
     setConfigurator(array('%baz_class%', 'configureStatic1'))
 ;
-$container->register('foo_bar', '%foo_class%');
+$container->
+    register('foo_bar', '%foo_class%')->
+    setScope('prototype')
+;
 $container->getParameterBag()->clear();
 $container->getParameterBag()->add(array(
     'baz_class' => 'BazClass',
@@ -41,18 +44,44 @@ $container->getParameterBag()->add(array(
     'foo' => 'bar',
 ));
 $container->setAlias('alias_for_foo', 'foo');
+$container->setAlias('alias_for_alias', 'alias_for_foo');
 $container->
     register('method_call1', 'FooClass')->
     setFile(realpath(__DIR__.'/../includes/foo.php'))->
     addMethodCall('setBar', array(new Reference('foo')))->
     addMethodCall('setBar', array(new Reference('foo2', ContainerInterface::NULL_ON_INVALID_REFERENCE)))->
     addMethodCall('setBar', array(new Reference('foo3', ContainerInterface::IGNORE_ON_INVALID_REFERENCE)))->
-    addMethodCall('setBar', array(new Reference('foobaz', ContainerInterface::IGNORE_ON_INVALID_REFERENCE)))
+    addMethodCall('setBar', array(new Reference('foobaz', ContainerInterface::IGNORE_ON_INVALID_REFERENCE)))->
+    addMethodCall('setBar', array(new Expression('service("foo").foo() ~ parameter("foo")')))
 ;
 $container->
-    register('factory_service')->
+    register('factory_service', 'Bar')->
     setFactoryService('foo.baz')->
     setFactoryMethod('getInstance')
+;
+
+$container
+    ->register('foo_with_inline', 'Foo')
+    ->addMethodCall('setBar', array(new Reference('inlined')))
+;
+$container
+    ->register('inlined', 'Bar')
+    ->setProperty('pub', 'pub')
+    ->addMethodCall('setBaz', array(new Reference('baz')))
+    ->setPublic(false)
+;
+$container
+    ->register('baz', 'Baz')
+    ->addMethodCall('setFoo', array(new Reference('foo_with_inline')))
+;
+$container
+    ->register('request', 'Request')
+    ->setSynthetic(true)
+    ->setSynchronized(true)
+;
+$container
+    ->register('depends_on_request', 'stdClass')
+    ->addMethodCall('setRequest', array(new Reference('request', ContainerInterface::NULL_ON_INVALID_REFERENCE, false)))
 ;
 
 return $container;

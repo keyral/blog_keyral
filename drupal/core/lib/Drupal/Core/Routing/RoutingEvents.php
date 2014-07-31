@@ -13,26 +13,22 @@ namespace Drupal\Core\Routing;
 final class RoutingEvents {
 
   /**
+   * THE DYNAMIC event is fired on a route collection to allow new routes.
+   *
+   * This event is used to add new routes based upon existing routes.
+   */
+  const DYNAMIC = 'routing.route_dynamic';
+
+  /**
    * The ALTER event is fired on a route collection to allow changes to routes.
    *
    * This event is used to process new routes before they get saved.
-   *
-   * @see \Drupal\Core\Routing\RouteBuildEvent
-   *
-   * @var string
    */
   const ALTER = 'routing.route_alter';
 
   /**
-   * The DYNAMIC event is fired to allow modules to register additional routes.
-   *
-   * Most routes are static, an should be defined as such. Dynamic routes are
-   * only those whose existence changes depending on the state of the system
-   * at runtime, depending on configuration.
-   *
-   * @see \Drupal\Core\Routing\RouteBuildEvent
-   *
-   * @var string
+   * The FINISHED event is fired when the route building ended.
    */
-  const DYNAMIC = 'routing.route_dynamic';
+  const FINISHED = 'routing.route_finished';
+
 }

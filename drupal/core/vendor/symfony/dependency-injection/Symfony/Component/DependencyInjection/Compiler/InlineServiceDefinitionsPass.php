@@ -70,6 +70,8 @@ class InlineServiceDefinitionsPass implements RepeatablePassInterface
      *
      * @param ContainerBuilder $container The ContainerBuilder
      * @param array            $arguments An array of arguments
+     *
+     * @return array
      */
     private function inlineArguments(ContainerBuilder $container, array $arguments)
     {
@@ -115,12 +117,16 @@ class InlineServiceDefinitionsPass implements RepeatablePassInterface
             return true;
         }
 
-        if ($definition->isPublic()) {
+        if ($definition->isPublic() || $definition->isLazy()) {
             return false;
         }
 
         if (!$this->graph->hasNode($id)) {
             return true;
+        }
+
+        if ($this->currentId == $id) {
+            return false;
         }
 
         $ids = array();

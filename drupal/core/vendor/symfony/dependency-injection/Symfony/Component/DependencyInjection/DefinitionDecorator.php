@@ -24,12 +24,12 @@ use Symfony\Component\DependencyInjection\Exception\OutOfBoundsException;
 class DefinitionDecorator extends Definition
 {
     private $parent;
-    private $changes;
+    private $changes = array();
 
     /**
      * Constructor.
      *
-     * @param Definition $parent The Definition instance to decorate.
+     * @param string $parent The id of Definition instance to decorate.
      *
      * @api
      */
@@ -38,13 +38,12 @@ class DefinitionDecorator extends Definition
         parent::__construct();
 
         $this->parent = $parent;
-        $this->changes = array();
     }
 
     /**
      * Returns the Definition being decorated.
      *
-     * @return Definition
+     * @return string
      *
      * @api
      */
@@ -150,6 +149,18 @@ class DefinitionDecorator extends Definition
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @api
+     */
+    public function setLazy($boolean)
+    {
+        $this->changes['lazy'] = true;
+
+        return parent::setLazy($boolean);
+    }
+
+    /**
      * Gets an argument to pass to the service constructor/factory method.
      *
      * If replaceArgument() has been used to replace an argument, this method
@@ -158,6 +169,8 @@ class DefinitionDecorator extends Definition
      * @param integer $index
      *
      * @return mixed The argument value
+     *
+     * @throws OutOfBoundsException When the argument does not exist
      *
      * @api
      */

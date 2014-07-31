@@ -5,37 +5,91 @@
  * Hooks provided by the base system for language support.
  */
 
+use Drupal\Core\Language\LanguageInterface;
+
+/**
+ * @defgroup i18n Internationalization
+ * @{
+ * Internationalization and translation
+ *
+ * The principle of internationalization is that it should be possible to make a
+ * Drupal site in any language (or a multi-lingual site), where only content in
+ * the desired language is displayed for any particular page request. In order
+ * to make this happen, developers of modules, themes, and installation profiles
+ * need to make sure that all of the displayable content and user interface (UI)
+ * text that their project deals with is internationalized properly, so that it
+ * can be translated using the standard Drupal translation mechanisms.
+ *
+ * @section internationalization Internationalization
+ * Different @link info_types types of information in Drupal @endlink have
+ * different methods for internationalization, and different portions of the
+ * UI also have different methods for internationalization. Here is a list of
+ * the different mechanisms for internationalization, and some notes:
+ * - UI text is always put into code and related files in English.
+ * - Any time UI text is displayed using PHP code, it should be passed through
+ *   either the global t() function or a t() method on the class. If it
+ *   involves plurals, it should be passed through either the global
+ *   formatPlural() function or a formatPlural() method on the class. Use
+ *   \Drupal\Core\StringTranslation\StringTranslationTrait to get these methods
+ *   into a class.
+ * - Dates displayed in the UI should be passed through the 'date' service
+ *   class's format() method. Again see the Services topic; the method to
+ *   call is \Drupal\Core\Datetime\Date::format().
+ * - Some YML files contain UI text that is automatically translatable:
+ *   - *.routing.yml files: route titles. This also applies to
+ *     *.links.task.yml, *.links.action.yml, and *.links.contextual.yml files.
+ *   - *.info.yml files: module names and descriptions.
+ * - For configuration, make sure any configuration that is displayable to
+ *   users is marked as translatable in the configuration schema. Configuration
+ *   types label, text, and date_format are translatable; string is
+ *   non-translatable text. See the @link config_api Config API topic @endlink
+ *   for more information.
+ * - For annotation, make sure that any text that is displayable in the UI
+ *   is wrapped in \@Translation(). See the
+ *   @link plugin_translatable Plugin translatables topic @endlink for more
+ *   information.
+ * - Content entities are translatable if they have
+ *   @code
+ *   translatable = TRUE,
+ *   @endcode
+ *   in their annotation. The use of entities to store user-editable content to
+ *   be displayed in the site is highly recommended over creating your own
+ *   method for storing, retrieving, displaying, and internationalizing content.
+ * - For Twig templates, use 't' or 'trans' filters to indicate translatable
+ *   text. See https://www.drupal.org/node/2133321 for more information.
+ * - In JavaScript code, use the Drupal.t() and Drupal.formatPlural() functions
+ *   (defined in core/misc/drupal.js) to translate UI text.
+ * - If you are using a custom module, theme, etc. that is not hosted on
+ *   Drupal.org, see
+ *   @link interface_translation_properties Interface translation properties topic @endlink
+ *   for information on how to make sure your UI text is translatable.
+ *
+ * @section translation Translation
+ * Once your data and user interface are internationalized, the following Core
+ * modules are used to translate it into different languages (machine names of
+ * modules in parentheses):
+ * - Language (language): Define which languages are active on the site.
+ * - Interface Translation (locale): Translate UI text.
+ * - Content Translation (content_translation): Translate content entities.
+ * - Configuration Translation (config_translation): Translate configuration.
+ *
+ * The Interface Translation module deserves special mention, because besides
+ * providing a UI for translating UI text, it also imports community
+ * translations from the
+ * @link https://localize.drupal.org Drupal translation server. @endlink If
+ * UI text in Drupal Core and contributed modules, themes, and installation
+ * profiles is properly internationalized (as described above), the text is
+ * automatically added to the translation server for community members to
+ * translate.
+ *
+ * @see transliteration
+ * @}
+ */
+
 /**
  * @addtogroup hooks
  * @{
  */
-
-/**
- * Allows modules to act after language initialization has been performed.
- *
- * This is primarily needed to provide translation for configuration variables
- * in the proper bootstrap phase. Variables are user-defined strings and
- * therefore should not be translated via t(), since the source string can
- * change without notice and any previous translation would be lost. Moreover,
- * since variables can be used in the bootstrap phase, we need a bootstrap hook
- * to provide a translation early enough to avoid misalignments between code
- * using the original values and code using the translated values. However
- * modules implementing hook_boot() should be aware that language initialization
- * did not happen yet and thus they cannot rely on translated variables.
- */
-function hook_language_init() {
-  global $conf;
-
-  switch (language(LANGUAGE_TYPE_INTERFACE)->langcode) {
-    case 'it':
-      $conf['system.site']['name'] = 'Il mio sito Drupal';
-      break;
-
-    case 'fr':
-      $conf['system.site']['name'] = 'Mon site Drupal';
-      break;
-  }
-}
 
 /**
  * Perform alterations on language switcher links.
@@ -52,133 +106,13 @@ function hook_language_init() {
  *   The current path.
  */
 function hook_language_switch_links_alter(array &$links, $type, $path) {
-  $language_interface = language(LANGUAGE_TYPE_INTERFACE);
+  $language_interface = \Drupal::languageManager()->getCurrentLanguage();
 
-  if ($type == LANGUAGE_TYPE_CONTENT && isset($links[$language_interface->langcode])) {
-    foreach ($links[$language_interface->langcode] as $link) {
+  if ($type == LanguageInterface::TYPE_CONTENT && isset($links[$language_interface->id])) {
+    foreach ($links[$language_interface->id] as $link) {
       $link['attributes']['class'][] = 'active-language';
     }
   }
-}
-
-/**
- * Define language types.
- *
- * @return
- *   An associative array of language type definitions. The keys are the
- *   identifiers, which are also used as names for global variables representing
- *   the types in the bootstrap phase. The values are associative arrays that
- *   may contain the following elements:
- *   - name: The human-readable language type identifier.
- *   - description: A description of the language type.
- *   - fixed: A fixed array of language negotiation method identifiers to use to
- *     initialize this language. Defining this key makes the language type
- *     non-configurable, so it will always use the specified methods in the
- *     given priority order. Omit to make the language type configurable.
- *
- * @see hook_language_types_info_alter()
- * @ingroup language_negotiation
- */
-function hook_language_types_info() {
-  return array(
-    'custom_language_type' => array(
-      'name' => t('Custom language'),
-      'description' => t('A custom language type.'),
-    ),
-    'fixed_custom_language_type' => array(
-      'fixed' => array('custom_language_negotiation_method'),
-    ),
-  );
-}
-
-/**
- * Perform alterations on language types.
- *
- * @param $language_types
- *   Array of language type definitions.
- *
- * @see hook_language_types_info()
- * @ingroup language_negotiation
- */
-function hook_language_types_info_alter(array &$language_types) {
-  if (isset($language_types['custom_language_type'])) {
-    $language_types['custom_language_type_custom']['description'] = t('A far better description.');
-  }
-}
-
-/**
- * Define language negotiation methods.
- *
- * @return
- *   An associative array of language negotiation method definitions. The keys
- *   are method identifiers, and the values are associative arrays definining
- *   each method, with the following elements:
- *   - types: An array of allowed language types. If a language negotiation
- *     method does not specify which language types it should be used with, it
- *     will be available for all the configurable language types.
- *   - callbacks: An associative array of functions that will be called to
- *     perform various tasks. Possible elements are:
- *     - negotiation: (required) Name of the callback function that determines
- *       the language value.
- *     - language_switch: (optional) Name of the callback function that
- *       determines links for a language switcher block associated with this
- *       method. See language_switcher_url() for an example.
- *     - url_rewrite: (optional) Name of the callback function that provides URL
- *       rewriting, if needed by this method.
- *   - file: The file where callback functions are defined (this file will be
- *     included before the callbacks are invoked).
- *   - weight: The default weight of the method.
- *   - name: The translated human-readable name for the method.
- *   - description: A translated longer description of the method.
- *   - config: An internal path pointing to the method's configuration page.
- *   - cache: The value Drupal's page cache should be set to for the current
- *     method to be invoked.
- *
- * @see hook_language_negotiation_info_alter()
- * @ingroup language_negotiation
- */
-function hook_language_negotiation_info() {
-  return array(
-    'custom_language_negotiation_method' => array(
-      'callbacks' => array(
-        'negotiation' => 'custom_negotiation_callback',
-        'language_switch' => 'custom_language_switch_callback',
-        'url_rewrite' => 'custom_url_rewrite_callback',
-      ),
-      'file' => drupal_get_path('module', 'custom') . '/custom.module',
-      'weight' => -4,
-      'types' => array('custom_language_type'),
-      'name' => t('Custom language negotiation method'),
-      'description' => t('This is a custom language negotiation method.'),
-      'cache' => 0,
-    ),
-  );
-}
-
-/**
- * Perform alterations on language negotiation methods.
- *
- * @param $negotiation_info
- *   Array of language negotiation method definitions.
- *
- * @see hook_language_negotiation_info()
- * @ingroup language_negotiation
- */
-function hook_language_negotiation_info_alter(array &$negotiation_info) {
-  if (isset($negotiation_info['custom_language_method'])) {
-    $negotiation_info['custom_language_method']['config'] = 'admin/config/regional/language/detection/custom-language-method';
-  }
-}
-
-/**
- * Perform alterations on the language fallback candidates.
- *
- * @param $fallback_candidates
- *   An array of language codes whose order will determine the language fallback
- *   order.
- */
-function hook_language_fallback_candidates_alter(array &$fallback_candidates) {
-  $fallback_candidates = array_reverse($fallback_candidates);
 }
 
 /**
@@ -204,18 +138,21 @@ function hook_language_fallback_candidates_alter(array &$fallback_candidates) {
  * vs. initial capital letter only) is not taken into account, and in
  * transliterations of capital letters that result in two or more letters, by
  * convention only the first is capitalized in the Drupal transliteration
- * result. So, the process has limitations; however, since the reason for
- * transliteration is typically to create machine names or file names, this
- * should not really be a problem. After transliteration, other transformation
- * or validation may be necessary, such as converting spaces to another
- * character, removing non-printable characters, lower-casing, etc.
+ * result. Also, only Unicode characters of 4 bytes or less can be
+ * transliterated in the base system; language-specific overrides can be made
+ * for longer Unicode characters. So, the process has limitations; however,
+ * since the reason for transliteration is typically to create machine names or
+ * file names, this should not really be a problem. After transliteration,
+ * other transformation or validation may be necessary, such as converting
+ * spaces to another character, removing non-printable characters,
+ * lower-casing, etc.
  *
  * Here is a code snippet to transliterate some text:
  * @code
  * // Use the current default interface language.
- * $langcode = language(LANGUAGE_TYPE_INTERFACE)->langcode;
+ * $langcode = \Drupal::languageManager()->getCurrentLanguage()->id;
  * // Instantiate the transliteration class.
- * $trans = drupal_container()->get('transliteration');
+ * $trans = \Drupal::transliteration();
  * // Use this to transliterate some text.
  * $transformed = $trans->transliterate($string, $langcode);
  * @endcode
@@ -223,12 +160,19 @@ function hook_language_fallback_candidates_alter(array &$fallback_candidates) {
  * Drupal Core provides the generic transliteration character tables and
  * overrides for a few common languages; modules can implement
  * hook_transliteration_overrides_alter() to provide further language-specific
- * overrides. Modules can also completely override the transliteration classes
- * in \Drupal\Core\CoreBundle.
+ * overrides (including providing transliteration for Unicode characters that
+ * are longer than 4 bytes). Modules can also completely override the
+ * transliteration classes in \Drupal\Core\CoreServiceProvider.
  */
 
 /**
  * Provide language-specific overrides for transliteration.
+ *
+ * If the overrides you want to provide are standard for your language, consider
+ * providing a patch for the Drupal Core transliteration system instead of using
+ * this hook. This hook can be used temporarily until Drupal Core's
+ * transliteration tables are fixed, or for sites that want to use a
+ * non-standard transliteration system.
  *
  * @param array $overrides
  *   Associative array of language-specific overrides whose keys are integer

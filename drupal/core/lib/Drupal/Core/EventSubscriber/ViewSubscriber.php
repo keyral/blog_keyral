@@ -7,6 +7,10 @@
 
 namespace Drupal\Core\EventSubscriber;
 
+use Drupal\Core\Ajax\AjaxResponseRenderer;
+use Drupal\Core\Controller\TitleResolverInterface;
+use Drupal\Core\Page\HtmlPage;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -25,10 +29,41 @@ use Drupal\Core\ContentNegotiation;
  */
 class ViewSubscriber implements EventSubscriberInterface {
 
+  /**
+   * The content negotiation.
+   *
+   * @var \Drupal\Core\ContentNegotiation
+   */
   protected $negotiation;
 
-  public function __construct(ContentNegotiation $negotiation) {
+  /**
+   * The title resolver.
+   *
+   * @var \Drupal\Core\Controller\TitleResolverInterface
+   */
+  protected $titleResolver;
+
+  /**
+   * The Ajax response renderer.
+   *
+   * @var \Drupal\Core\Ajax\AjaxResponseRenderer
+   */
+  protected $ajaxRenderer;
+
+  /**
+   * Constructs a new ViewSubscriber.
+   *
+   * @param \Drupal\Core\ContentNegotiation $negotiation
+   *   The content negotiation.
+   * @param \Drupal\Core\Controller\TitleResolverInterface $title_resolver
+   *   The title resolver.
+   * @param \Drupal\Core\Ajax\AjaxResponseRenderer $ajax_renderer
+   *   The ajax response renderer.
+   */
+  public function __construct(ContentNegotiation $negotiation, TitleResolverInterface $title_resolver, AjaxResponseRenderer $ajax_renderer) {
     $this->negotiation = $negotiation;
+    $this->titleResolver = $title_resolver;
+    $this->ajaxRenderer = $ajax_renderer;
   }
 
   /**
@@ -59,30 +94,28 @@ class ViewSubscriber implements EventSubscriberInterface {
         $event->setResponse($this->$method($event));
       }
       else {
-        $event->setResponse(new Response('Unsupported Media Type', 415));
+        $event->setResponse(new Response('Not Acceptable', 406));
       }
-    }
-    elseif ($request->attributes->get('_legacy')) {
-      // This is an old hook_menu-based subrequest, which means we assume
-      // the body is supposed to be the complete page.
-      $page_result = $event->getControllerResult();
-      if (!is_array($page_result)) {
-        $page_result = array(
-          '#markup' => $page_result,
-        );
-      }
-      $event->setResponse(new Response(drupal_render_page($page_result)));
     }
     else {
       // This is a new-style Symfony-esque subrequest, which means we assume
       // the body is not supposed to be a complete page but just a page
       // fragment.
       $page_result = $event->getControllerResult();
+      if ($page_result instanceof HtmlPage || $page_result instanceof Response) {
+        return $page_result;
+      }
       if (!is_array($page_result)) {
         $page_result = array(
           '#markup' => $page_result,
         );
       }
+
+      // If no title was returned fall back to one defined in the route.
+      if (!isset($page_result['#title'])) {
+        $page_result['#title'] = $this->titleResolver->getTitle($request, $request->attributes->get(RouteObjectInterface::ROUTE_OBJECT));
+      }
+
       $event->setResponse(new Response(drupal_render($page_result)));
     }
   }
@@ -96,26 +129,8 @@ class ViewSubscriber implements EventSubscriberInterface {
     return $response;
   }
 
-  public function onAjax(GetResponseForControllerResultEvent $event) {
-    $page_callback_result = $event->getControllerResult();
-
-    // Construct the response content from the page callback result.
-    $commands = ajax_prepare_response($page_callback_result);
-    $json = ajax_render($commands);
-
-    // Build the actual response object.
-    $response = new JsonResponse();
-    $response->setContent($json);
-
-    return $response;
-  }
-
   public function onIframeUpload(GetResponseForControllerResultEvent $event) {
-    $page_callback_result = $event->getControllerResult();
-
-    // Construct the response content from the page callback result.
-    $commands = ajax_prepare_response($page_callback_result);
-    $json = ajax_render($commands);
+    $response = $event->getResponse();
 
     // Browser IFRAMEs expect HTML. Browser extensions, such as Linkification
     // and Skype's Browser Highlighter, convert URLs, phone numbers, etc. into
@@ -123,26 +138,9 @@ class ViewSubscriber implements EventSubscriberInterface {
     // JSON data by making it the value of a textarea.
     // @see http://malsup.com/jquery/form/#file-upload
     // @see http://drupal.org/node/1009382
-    $html = '<textarea>' . $json . '</textarea>';
+    $html = '<textarea>' . $response->getContent() . '</textarea>';
 
     return new Response($html);
-  }
-
-  /**
-   * Processes a successful controller into an HTTP 200 response.
-   *
-   * Some controllers may not return a response object but simply the body of
-   * one. The VIEW event is called in that case, to allow us to mutate that
-   * body into a Response object. In particular we assume that the return from
-   * an HTML-type response is a render array from a legacy page callback and
-   * render it.
-   *
-   * @param Symfony\Component\HttpKernel\Event\GetResponseForControllerResultEvent $event
-   *   The Event to process.
-   */
-  public function onHtml(GetResponseForControllerResultEvent $event) {
-    $page_callback_result = $event->getControllerResult();
-    return new Response(drupal_render_page($page_callback_result));
   }
 
   /**
